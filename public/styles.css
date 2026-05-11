@@ -48,44 +48,16 @@ body {
   animation: rise 0.8s ease-out both;
 }
 
-.brand-lockup {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+.brand-logo {
+  margin-bottom: 10px;
+  max-width: 560px;
 }
 
-.brand-mark {
-  width: 88px;
-  height: 60px;
-  border-radius: 14px;
-  background: #fff;
-  border: 1px solid #ffd5a3;
-  box-shadow: 0 10px 22px rgba(255, 122, 0, 0.2);
-  display: grid;
-  place-items: center;
-}
-
-.brand-mark svg {
-  width: 78px;
+.brand-logo svg {
+  display: block;
+  width: 100%;
   height: auto;
-}
-
-.brand-name {
-  margin: 0;
-  font-family: "Bebas Neue", sans-serif;
-  font-size: 2rem;
-  letter-spacing: 0.08em;
-  color: #1a2b42;
-}
-
-.brand-tag {
-  margin: 0;
-  color: var(--muted);
-  font-weight: 600;
-  font-size: 0.84rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  filter: drop-shadow(0 10px 20px rgba(255, 122, 0, 0.12));
 }
 
 .eyebrow {
@@ -117,6 +89,22 @@ body {
   font-size: 1.15rem;
   font-weight: 700;
   color: #1f3a59;
+}
+
+@media (max-width: 720px) {
+  .brand-logo {
+    max-width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.4rem, 13vw, 4.2rem);
+  }
+
+  .hero-slogan {
+    font-size: 1.02rem;
+    line-height: 1.35;
+  }
 }
 
 .grid-layout {
@@ -373,19 +361,6 @@ button:disabled {
 }
 
 @media (max-width: 960px) {
-  .brand-lockup {
-    align-items: flex-start;
-  }
-
-  .brand-mark {
-    width: 74px;
-    height: 52px;
-  }
-
-  .brand-name {
-    font-size: 1.6rem;
-  }
-
   .grid-layout {
     grid-template-columns: 1fr;
     grid-template-areas:
