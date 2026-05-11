@@ -130,7 +130,15 @@
       </section>
     </main>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      // Cargar Socket.IO solo si está disponible
+      if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+        const script = document.createElement('script');
+        script.src = '/socket.io/socket.io.js';
+        script.onerror = function() { console.warn('Socket.IO no disponible'); };
+        // No agregar el script para evitar errores
+      }
+    </script>
     <script src="app.js" defer></script>
   </body>
 </html>
