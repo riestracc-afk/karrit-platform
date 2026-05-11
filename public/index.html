@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KARRIT | Plataforma de Carga</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="noise-layer"></div>
+    <main class="app-shell">
+      <section class="hero">
+        <p class="eyebrow">KARRIT LOGISTICS</p>
+        <h1>Tu Carga, Nuestro Servicio.</h1>
+        <p class="subtitle">
+          Conecta con conductores especializados en transporte de carga. Desde pick-ups ligeras hasta camiones de volteo, encontramos el vehículo perfecto para tu necesidad.
+        </p>
+      </section>
+
+      <section class="grid-layout">
+        <article class="card request-card">
+          <div class="card-header">
+            <h2>Solicitar Carga</h2>
+            <span class="status-pill" id="rideStatusPill">Sin carga activa</span>
+          </div>
+
+          <form id="rideForm" class="form">
+            <label>
+              Categoría de Vehículo
+              <select id="categorySelect" required>
+                <option value="">Selecciona una categoría...</option>
+              </select>
+            </label>
+
+            <label>
+              Tipo de Servicio
+              <select id="serviceSelect" required>
+                <option value="">Primero selecciona una categoría</option>
+              </select>
+            </label>
+
+            <label>
+              Punto de recogida
+              <input id="pickupInput" type="text" placeholder="Ej: Zona industrial 15" required />
+            </label>
+
+            <label>
+              Destino
+              <input id="dropoffInput" type="text" placeholder="Ej: Centro de distribución" required />
+            </label>
+
+            <div class="fare-preview">
+              <div>
+                <span class="meta">Tarifa estimada</span>
+                <strong id="fareEstimate">EUR --.--</strong>
+              </div>
+              <button type="button" class="ghost" id="quoteBtn">Recalcular</button>
+            </div>
+
+            <div class="cta-row">
+              <button type="submit" id="requestBtn">Solicitar Carga</button>
+              <button type="button" id="cancelBtn" class="danger" disabled>Cancelar</button>
+            </div>
+          </form>
+
+          <div class="trip-progress-wrap">
+            <div class="trip-progress-labels">
+              <span>Progreso de entrega</span>
+              <span id="progressPercent">0%</span>
+            </div>
+            <div class="trip-progress-track">
+              <div class="trip-progress-fill" id="tripProgressFill"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card map-card">
+          <div class="card-header">
+            <h2>Conductores Disponibles</h2>
+            <span class="meta" id="availableDrivers">0 conductores libres</span>
+          </div>
+
+          <div class="map-sim" id="mapSim">
+            <div class="city-ring"></div>
+            <div class="city-ring ring-two"></div>
+          </div>
+
+          <div class="driver-info" id="driverInfo">
+            Esperando asignación de conductor...
+          </div>
+        </article>
+
+        <article class="card timeline-card">
+          <div class="card-header">
+            <h2>Historial de la Carga</h2>
+            <span class="meta" id="rideIdMeta">ID: --</span>
+          </div>
+          <ul id="timelineList" class="timeline-list">
+            <li>Aún no has solicitado una carga.</li>
+          </ul>
+        </article>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js" defer></script>
+  </body>
+</html>

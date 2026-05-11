@@ -1,0 +1,30 @@
+{
+  "name": "karrit-platform",
+  "version": "1.0.0",
+  "description": "KARRIT - Plataforma de conexión para conductores de camionetas y camiones de carga",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "deploy": "firebase deploy"
+  },
+  "keywords": [
+    "carga",
+    "logística",
+    "camiones",
+    "camionetas",
+    "transporte"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.0.5",
+    "firebase-admin": "^12.0.0",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": "18"
+  }
+}
