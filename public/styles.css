@@ -57,6 +57,20 @@ body {
   animation: rise 0.6s ease-out both;
 }
 
+@media (max-width: 480px) {
+  .hero-logo {
+    max-width: 200px;
+    margin-bottom: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-logo {
+    max-width: 320px;
+    margin-bottom: 20px;
+  }
+}
+
 .eyebrow {
   margin: 0;
   font-size: 0.78rem;
