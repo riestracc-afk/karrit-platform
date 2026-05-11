@@ -15,7 +15,13 @@ const state = {
   selectedCategory: null,
   routeType: "local",
   autoService: null,
-  metroKeywords: []
+  tripRules: {
+    regionName: "Guadalajara, Jalisco",
+    municipalities: ["guadalajara", "zapopan", "tonala", "tlaquepaque", "tlajomulco"],
+    foraneoThresholdKm: 22,
+    includedKmInStartFare: 10,
+    foraneoMultiplier: 1.5
+  }
 };
 
 const elements = {
@@ -24,6 +30,7 @@ const elements = {
   rideForm: document.getElementById("rideForm"),
   pickupInput: document.getElementById("pickupInput"),
   dropoffInput: document.getElementById("dropoffInput"),
+  distanceKmInput: document.getElementById("distanceKmInput"),
   quoteBtn: document.getElementById("quoteBtn"),
   requestBtn: document.getElementById("requestBtn"),
   cancelBtn: document.getElementById("cancelBtn"),
@@ -37,6 +44,9 @@ const elements = {
   tripProgressFill: document.getElementById("tripProgressFill"),
   progressPercent: document.getElementById("progressPercent"),
   pricingTableBody: document.getElementById("pricingTableBody"),
+  tripRulesTableBody: document.getElementById("tripRulesTableBody"),
+  saveTripRulesBtn: document.getElementById("saveTripRulesBtn"),
+  tripRulesStatus: document.getElementById("tripRulesStatus"),
   pickupMap: document.getElementById("pickupMap"),
   driverMap: document.getElementById("driverMap"),
   pickupCoords: document.getElementById("pickupCoords")
@@ -73,27 +83,22 @@ const fallbackRateCard = {
   dump_truck: { startFare: 1500, perKmRate: 75, waitPerMinRate: 12 }
 };
 
-const defaultMetroKeywords = [
-  "cdmx", "ciudad de mexico", "estado de mexico", "edomex", "azcapotzalco", "coyoacan", "cuajimalpa",
-  "gustavo a madero", "iztacalco", "iztapalapa", "magdalena contreras", "miguel hidalgo", "milpa alta",
-  "alvaro obregon", "tlahuac", "tlalpan", "venustiano carranza", "xochimilco", "benito juarez", "cuauhtemoc",
-  "naucalpan", "tlalnepantla", "ecatepec", "nezahualcoyotl", "chimalhuacan", "atizapan", "cuautitlan",
-  "tultitlan", "coacalco", "huixquilucan", "chalco", "valle de chalco", "la paz", "tepotzotlan"
-];
-
-async function loadMetroZones() {
+async function loadTripRules() {
   try {
-    const response = await fetch("/metro-zones.json");
-    const data = await response.json();
-    if (Array.isArray(data.keywords) && data.keywords.length) {
-      state.metroKeywords = data.keywords.map((item) => normalizeText(item));
-      return;
+    const response = await fetch("/api/trip-rules");
+    if (!response.ok) {
+      throw new Error("No se pudo cargar configuración de reglas");
     }
-  } catch (error) {
-    console.warn("No se pudo cargar metro-zones.json, se usara fallback local");
-  }
 
-  state.metroKeywords = defaultMetroKeywords.map((item) => normalizeText(item));
+    const rules = await response.json();
+    state.tripRules = {
+      ...state.tripRules,
+      ...rules,
+      municipalities: Array.isArray(rules.municipalities) ? rules.municipalities : state.tripRules.municipalities
+    };
+  } catch (error) {
+    console.warn("No se pudieron cargar reglas de viaje. Se usan valores por defecto.");
+  }
 }
 
 function normalizeText(value) {
@@ -104,20 +109,31 @@ function normalizeText(value) {
     .trim();
 }
 
-function isMetroAddress(value) {
+function isScopedAddress(value) {
   const text = normalizeText(value);
   if (!text) {
     return false;
   }
 
-  const source = state.metroKeywords.length ? state.metroKeywords : defaultMetroKeywords;
-  return source.some((keyword) => text.includes(keyword));
+  const source = Array.isArray(state.tripRules.municipalities) ? state.tripRules.municipalities : [];
+  return source.some((keyword) => text.includes(normalizeText(keyword)));
 }
 
-function detectRouteType(pickup, dropoff) {
-  const isPickupMetro = isMetroAddress(pickup);
-  const isDropoffMetro = isMetroAddress(dropoff);
-  return isPickupMetro && isDropoffMetro ? "local" : "foraneo";
+function getDistanceInputKm() {
+  const distanceValue = Number(elements.distanceKmInput?.value || 0);
+  return Math.max(0, Number.isFinite(distanceValue) ? distanceValue : 0);
+}
+
+function detectRouteType(pickup, dropoff, distanceKm = getDistanceInputKm()) {
+  const isPickupScoped = isScopedAddress(pickup);
+  const isDropoffScoped = isScopedAddress(dropoff);
+
+  if (!isPickupScoped || !isDropoffScoped) {
+    return "local";
+  }
+
+  const threshold = Number(state.tripRules.foraneoThresholdKm || 22);
+  return distanceKm > threshold ? "foraneo" : "local";
 }
 
 function resolveAutoService(categoryKey, routeType) {
@@ -147,7 +163,8 @@ function resolveAutoService(categoryKey, routeType) {
 function refreshAutoServiceUI() {
   const pickup = elements.pickupInput.value;
   const dropoff = elements.dropoffInput.value;
-  state.routeType = detectRouteType(pickup, dropoff);
+  const distanceKm = getDistanceInputKm();
+  state.routeType = detectRouteType(pickup, dropoff, distanceKm);
 
   if (!state.selectedCategory) {
     state.autoService = null;
@@ -231,18 +248,133 @@ async function recalculateQuote() {
     return;
   }
 
-  const distance = randomDistance();
+  const distance = getDistanceInputKm() || randomDistance();
+  const pickup = elements.pickupInput.value.trim();
+  const dropoff = elements.dropoffInput.value.trim();
+  const routeType = detectRouteType(pickup, dropoff, distance);
+  state.routeType = routeType;
+  refreshAutoServiceUI();
+
   try {
     const response = await fetch(
-      `/api/quote?category=${state.selectedCategory}&service=${state.autoService.key}&distance=${distance}&routeType=${state.routeType}`
+      `/api/quote?category=${state.selectedCategory}&service=${state.autoService.key}&distance=${distance}&routeType=${routeType}&pickup=${encodeURIComponent(pickup)}&dropoff=${encodeURIComponent(dropoff)}`
     );
     const data = await response.json();
     elements.fareEstimate.textContent = formatCurrency(data.fareEstimate);
   } catch (error) {
     const rateCard = fallbackRateCard[state.selectedCategory] || fallbackRateCard.pickup_mini;
-    const baseTotal = rateCard.startFare + distance * rateCard.perKmRate;
-    const routeMultiplier = state.routeType === "foraneo" ? 1.5 : 1;
+    const includedKm = Number(state.tripRules.includedKmInStartFare || 10);
+    const billableDistance = Math.max(0, distance - includedKm);
+    const baseTotal = rateCard.startFare + billableDistance * rateCard.perKmRate;
+    const routeMultiplier = state.routeType === "foraneo" ? Number(state.tripRules.foraneoMultiplier || 1.5) : 1;
     elements.fareEstimate.textContent = formatCurrency(baseTotal * routeMultiplier);
+  }
+}
+
+function renderTripRulesTable() {
+  if (!elements.tripRulesTableBody) {
+    return;
+  }
+
+  const rulesRows = [
+    {
+      key: "foraneoThresholdKm",
+      label: "Distancia mínima para foráneo (km)",
+      value: Number(state.tripRules.foraneoThresholdKm || 22),
+      step: "0.1",
+      min: "0"
+    },
+    {
+      key: "includedKmInStartFare",
+      label: "Km incluidos en tarifa de arranque",
+      value: Number(state.tripRules.includedKmInStartFare || 10),
+      step: "0.1",
+      min: "0"
+    },
+    {
+      key: "foraneoMultiplier",
+      label: "Multiplicador foráneo",
+      value: Number(state.tripRules.foraneoMultiplier || 1.5),
+      step: "0.01",
+      min: "1"
+    }
+  ];
+
+  const municipalityList = (state.tripRules.municipalities || []).join(", ");
+
+  elements.tripRulesTableBody.innerHTML = `${rulesRows
+    .map(
+      (row) => `
+      <tr>
+        <td>${row.label}</td>
+        <td>
+          <input
+            type="number"
+            id="rule_${row.key}"
+            value="${row.value}"
+            step="${row.step}"
+            min="${row.min}"
+          />
+        </td>
+      </tr>
+    `
+    )
+    .join("")}
+    <tr>
+      <td>Municipios (separados por coma)</td>
+      <td><input type="text" id="rule_municipalities" value="${municipalityList}" /></td>
+    </tr>`;
+}
+
+async function saveTripRules() {
+  if (!elements.saveTripRulesBtn) {
+    return;
+  }
+
+  const thresholdInput = document.getElementById("rule_foraneoThresholdKm");
+  const includedInput = document.getElementById("rule_includedKmInStartFare");
+  const multiplierInput = document.getElementById("rule_foraneoMultiplier");
+  const municipalitiesInput = document.getElementById("rule_municipalities");
+
+  const payload = {
+    foraneoThresholdKm: Number(thresholdInput?.value || state.tripRules.foraneoThresholdKm),
+    includedKmInStartFare: Number(includedInput?.value || state.tripRules.includedKmInStartFare),
+    foraneoMultiplier: Number(multiplierInput?.value || state.tripRules.foraneoMultiplier),
+    municipalities: String(municipalitiesInput?.value || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+  };
+
+  elements.saveTripRulesBtn.disabled = true;
+  if (elements.tripRulesStatus) {
+    elements.tripRulesStatus.textContent = "Guardando...";
+  }
+
+  try {
+    const response = await fetch("/api/admin/trip-rules", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "No se pudieron guardar las reglas");
+    }
+
+    state.tripRules = data.tripRules;
+    renderTripRulesTable();
+    refreshAutoServiceUI();
+    if (elements.tripRulesStatus) {
+      elements.tripRulesStatus.textContent = "Configuración guardada";
+    }
+  } catch (error) {
+    if (elements.tripRulesStatus) {
+      elements.tripRulesStatus.textContent = `Error: ${error.message}`;
+    }
+  } finally {
+    elements.saveTripRulesBtn.disabled = false;
   }
 }
 
@@ -405,12 +537,22 @@ async function createRide(event) {
     return;
   }
 
+  const distanceKm = getDistanceInputKm();
+  const routeType = detectRouteType(
+    elements.pickupInput.value.trim(),
+    elements.dropoffInput.value.trim(),
+    distanceKm
+  );
+  state.routeType = routeType;
+  refreshAutoServiceUI();
+
   const payload = {
     pickup: elements.pickupInput.value.trim(),
     dropoff: elements.dropoffInput.value.trim(),
     category: state.selectedCategory,
     service: state.autoService.key,
-    routeType: state.routeType,
+    routeType,
+    distance: distanceKm,
     pickupPoint: { lat: 40.4168, lng: -3.7038 }
   };
 
@@ -462,13 +604,11 @@ async function cancelRide() {
 }
 
 function initializePickupMap() {
-  console.log("initializePickupMap called");
   if (!elements.pickupMap || !window.L) {
-    console.warn("Leaflet o contenedor de mapa no disponible", { hasPickupMap: !!elements.pickupMap, hasL: !!window.L });
+    console.warn("Leaflet o contenedor de mapa no disponible");
     return;
   }
 
-  console.log("Initializing pickup map...");
   // Initialize pickup map centered in Monterrey (default location in Mexico)
   maps.pickup = L.map("pickupMap", {
     center: [defaultLocation.lat, defaultLocation.lng],
@@ -477,7 +617,6 @@ function initializePickupMap() {
     scrollWheelZoom: true
   });
 
-  console.log("Map created, adding tile layer...");
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 19
@@ -515,14 +654,11 @@ function initializePickupMap() {
   });
 
   // Add initial marker at default location
-  console.log("Adding initial marker...");
   maps.pickupMarker = L.marker([defaultLocation.lat, defaultLocation.lng]).addTo(maps.pickup);
   elements.pickupInput.value = `Ubicación: ${defaultLocation.lat.toFixed(4)}, ${defaultLocation.lng.toFixed(4)}`;
   if (elements.pickupCoords) {
     elements.pickupCoords.innerHTML = `<label>Ubicación inicial: <span>${defaultLocation.lat.toFixed(6)}, ${defaultLocation.lng.toFixed(6)}</span></label>`;
   }
-  
-  console.log("Pickup map initialized successfully!");
 }
 
 function initializeDriverMap() {
@@ -570,35 +706,14 @@ function updateDriverMarkers(drivers) {
   });
 }
 
-async function cancelRide() {
-  if (!state.currentRideId) {
-    return;
-  }
-
-  const response = await fetch(`/api/rides/${state.currentRideId}/cancel`, { method: "POST" });
-  if (!response.ok) {
-    alert("No se pudo cancelar la carga");
-    return;
-  }
-
-  const ride = await response.json();
-  state.currentRide = ride;
-  updateRideUI();
-}
-
 async function init() {
-  console.log("Initializing KARRIT...");
-  await loadMetroZones();
+  await loadTripRules();
   await loadCategories();
   await loadPricing();
+  renderTripRulesTable();
   
-  // Initialize Leaflet maps
-  console.log("About to initialize Leaflet maps...");
-  setTimeout(() => {
-    console.log("Delayed initialization of maps...");
-    initializePickupMap();
-    initializeDriverMap();
-  }, 100);
+  initializePickupMap();
+  initializeDriverMap();
 
   elements.categorySelect.addEventListener("change", async (e) => {
     state.selectedCategory = e.target.value;
@@ -621,40 +736,22 @@ async function init() {
     refreshAutoServiceUI();
   });
 
+  if (elements.distanceKmInput) {
+    elements.distanceKmInput.addEventListener("input", () => {
+      refreshAutoServiceUI();
+    });
+  }
+
   elements.rideForm.addEventListener("submit", createRide);
   elements.cancelBtn.addEventListener("click", cancelRide);
   elements.quoteBtn.addEventListener("click", recalculateQuote);
   elements.serviceSelect.addEventListener("change", recalculateQuote);
+  if (elements.saveTripRulesBtn) {
+    elements.saveTripRulesBtn.addEventListener("click", saveTripRules);
+  }
 
   elements.categorySelect.disabled = false;
   elements.serviceSelect.disabled = true;
 }
 
 init();
-
-// Ensure maps are initialized even if init() hasn't completed
-if (document.readyState !== 'loading') {
-  // Document is already loaded, initialize maps immediately
-  setTimeout(() => {
-    console.log("Document ready state satisfied, ensuring maps initialized");
-    if (!maps.pickup && document.getElementById('pickupMap')) {
-      initializePickupMap();
-    }
-    if (!maps.driver && document.getElementById('driverMap')) {
-      initializeDriverMap();
-    }
-  }, 200);
-} else {
-  // Document is still loading
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOMContentLoaded fired, ensuring maps initialized");
-    setTimeout(() => {
-      if (!maps.pickup && document.getElementById('pickupMap')) {
-        initializePickupMap();
-      }
-      if (!maps.driver && document.getElementById('driverMap')) {
-        initializeDriverMap();
-      }
-    }, 100);
-  });
-}

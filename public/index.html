@@ -57,6 +57,11 @@
               <input id="dropoffInput" type="text" placeholder="Ej: Centro de distribución" required />
             </label>
 
+            <label>
+              Distancia estimada (km)
+              <input id="distanceKmInput" type="number" min="0" step="0.1" value="12" required />
+            </label>
+
             <div class="fare-preview">
               <div>
                 <span class="meta">Tarifa estimada</span>
@@ -101,6 +106,30 @@
                 <tr><td colspan="4" style="text-align: center; padding: 16px;">Cargando tarifas...</td></tr>
               </tbody>
             </table>
+          </div>
+
+          <div class="card-header" style="margin-top: 20px;">
+            <h2>Administración de Reglas de Viaje</h2>
+            <span class="meta">Supervisor</span>
+          </div>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+              <thead>
+                <tr style="border-bottom: 2px solid #ff8800;">
+                  <th style="text-align: left; padding: 8px;">Parámetro</th>
+                  <th style="text-align: left; padding: 8px;">Valor editable</th>
+                </tr>
+              </thead>
+              <tbody id="tripRulesTableBody">
+                <tr>
+                  <td colspan="2" style="text-align: center; padding: 16px;">Cargando configuración...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="cta-row" style="margin-top: 12px;">
+            <button type="button" id="saveTripRulesBtn">Guardar configuración</button>
+            <span class="meta" id="tripRulesStatus"></span>
           </div>
         </article>
 

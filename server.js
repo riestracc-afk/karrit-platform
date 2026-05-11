@@ -124,6 +124,15 @@ const categoryRateCard = {
   }
 };
 
+// Reglas administrativas de viaje (editable por supervisor)
+const tripRules = {
+  regionName: "Guadalajara, Jalisco",
+  municipalities: ["guadalajara", "zapopan", "tonala", "tlaquepaque", "tlajomulco"],
+  foraneoThresholdKm: 22,
+  includedKmInStartFare: 10,
+  foraneoMultiplier: 1.5
+};
+
 // Generar conductores con vehículos asignados
 const drivers = Array.from({ length: 18 }, (_, i) => {
   const categories = Object.keys(vehicleCategories);
@@ -169,42 +178,26 @@ function normalizeText(value) {
     .toLowerCase()
     .trim();
 }
-
-function loadMetroKeywords() {
-  try {
-    const metroZonesPath = path.join(__dirname, "public", "metro-zones.json");
-    const content = fs.readFileSync(metroZonesPath, "utf8");
-    const parsed = JSON.parse(content);
-    if (Array.isArray(parsed.keywords) && parsed.keywords.length) {
-      return parsed.keywords.map((item) => normalizeText(item));
-    }
-  } catch (error) {
-    console.warn("No se pudo cargar public/metro-zones.json, se usara fallback interno");
-  }
-
-  return [
-    "cdmx", "ciudad de mexico", "estado de mexico", "edomex", "azcapotzalco", "coyoacan", "cuajimalpa",
-    "gustavo a madero", "iztacalco", "iztapalapa", "magdalena contreras", "miguel hidalgo", "milpa alta",
-    "alvaro obregon", "tlahuac", "tlalpan", "venustiano carranza", "xochimilco", "benito juarez", "cuauhtemoc",
-    "naucalpan", "tlalnepantla", "ecatepec", "nezahualcoyotl", "chimalhuacan", "atizapan", "cuautitlan",
-    "tultitlan", "coacalco", "huixquilucan", "chalco", "valle de chalco", "la paz", "tepotzotlan"
-  ];
-}
-
-const metroKeywords = loadMetroKeywords();
-
-function isMetroAddress(value) {
+function isScopedAddress(value, municipalities = tripRules.municipalities) {
   const text = normalizeText(value);
   if (!text) {
     return false;
   }
-  return metroKeywords.some((keyword) => text.includes(keyword));
+
+  return municipalities.some((municipality) => text.includes(normalizeText(municipality)));
 }
 
-function resolveRouteType(pickup, dropoff) {
-  const pickupMetro = isMetroAddress(pickup);
-  const dropoffMetro = isMetroAddress(dropoff);
-  return pickupMetro && dropoffMetro ? "local" : "foraneo";
+function resolveRouteType(pickup, dropoff, distanceKm, rules = tripRules) {
+  const pickupInScope = isScopedAddress(pickup, rules.municipalities);
+  const dropoffInScope = isScopedAddress(dropoff, rules.municipalities);
+
+  // Esta regla aplica solo a Guadalajara y municipios configurados.
+  if (!pickupInScope || !dropoffInScope) {
+    return "local";
+  }
+
+  const normalizedDistance = Math.max(0, Number(distanceKm) || 0);
+  return normalizedDistance > rules.foraneoThresholdKm ? "foraneo" : "local";
 }
 
 function getServiceKeyByRouteType(categoryKey, routeType = "local") {
@@ -229,13 +222,15 @@ function estimateFare(distance, categoryKey, serviceKey, waitMinutes = 0, routeT
   const normalizedDistance = Math.max(0, Number(distance) || 0);
   const normalizedWait = Math.max(0, Number(waitMinutes) || 0);
   const demandFactor = 1 + Math.random() * 0.12;
+  const includedKm = Math.max(0, Number(tripRules.includedKmInStartFare) || 0);
+  const billableDistance = Math.max(0, normalizedDistance - includedKm);
 
   const subtotal =
     rateCard.startFare +
-    normalizedDistance * rateCard.perKm +
+    billableDistance * rateCard.perKm +
     normalizedWait * rateCard.waitPerMin;
 
-  const routeMultiplier = routeType === "foraneo" ? 1.5 : 1;
+  const routeMultiplier = routeType === "foraneo" ? tripRules.foraneoMultiplier : 1;
   const total = subtotal * (service.multiplier ?? 1) * routeMultiplier * demandFactor;
   return Number(total.toFixed(2));
 }
@@ -351,15 +346,65 @@ app.get("/api/pricing", (_req, res) => {
     startFare: rates.startFare,
     perKmRate: rates.perKm,
     waitPerMinRate: rates.waitPerMin,
+    includedKmInStartFare: tripRules.includedKmInStartFare,
     currency: "MXN"
   }));
   res.json(pricing);
 });
 
+app.get("/api/trip-rules", (_req, res) => {
+  return res.json({
+    ...tripRules,
+    municipalities: [...tripRules.municipalities]
+  });
+});
+
+app.put("/api/admin/trip-rules", (req, res) => {
+  const payload = req.body || {};
+  const foraneoThresholdKm = Number(payload.foraneoThresholdKm);
+  const includedKmInStartFare = Number(payload.includedKmInStartFare);
+  const foraneoMultiplier = Number(payload.foraneoMultiplier);
+  const municipalities = Array.isArray(payload.municipalities)
+    ? payload.municipalities.map((item) => normalizeText(item)).filter(Boolean)
+    : [];
+
+  if (!Number.isFinite(foraneoThresholdKm) || foraneoThresholdKm < 0) {
+    return res.status(400).json({ error: "foraneoThresholdKm inválido" });
+  }
+
+  if (!Number.isFinite(includedKmInStartFare) || includedKmInStartFare < 0) {
+    return res.status(400).json({ error: "includedKmInStartFare inválido" });
+  }
+
+  if (!Number.isFinite(foraneoMultiplier) || foraneoMultiplier < 1) {
+    return res.status(400).json({ error: "foraneoMultiplier inválido" });
+  }
+
+  if (!municipalities.length) {
+    return res.status(400).json({ error: "Debes enviar al menos un municipio" });
+  }
+
+  tripRules.foraneoThresholdKm = Number(foraneoThresholdKm.toFixed(2));
+  tripRules.includedKmInStartFare = Number(includedKmInStartFare.toFixed(2));
+  tripRules.foraneoMultiplier = Number(foraneoMultiplier.toFixed(2));
+  tripRules.municipalities = municipalities;
+
+  return res.json({
+    ok: true,
+    tripRules: {
+      ...tripRules,
+      municipalities: [...tripRules.municipalities]
+    }
+  });
+});
+
 app.get("/api/quote", (req, res) => {
   const distance = Number(req.query.distance || randomTripDistance());
   const category = String(req.query.category || "pickup_mini");
-  const routeType = String(req.query.routeType || "local");
+  const pickup = String(req.query.pickup || "");
+  const dropoff = String(req.query.dropoff || "");
+  const inferredRouteType = resolveRouteType(pickup, dropoff, distance);
+  const routeType = String(req.query.routeType || inferredRouteType);
   const service = String(req.query.service || getServiceKeyByRouteType(category, routeType));
   const waitMinutes = Number(req.query.waitMinutes || 0);
 
@@ -370,12 +415,19 @@ app.get("/api/quote", (req, res) => {
 
   const fareEstimate = estimateFare(distance, category, service, waitMinutes, routeType);
   const rateCard = categoryRateCard[category] || categoryRateCard.pickup_mini;
+  const includedKm = Math.max(0, Number(tripRules.includedKmInStartFare) || 0);
+  const billableDistance = Math.max(0, distance - includedKm);
 
   return res.json({
     category,
     service,
     routeType,
+    inferredRouteType,
+    pickup,
+    dropoff,
     distance,
+    billableDistance,
+    includedKmInStartFare: includedKm,
     waitMinutes,
     fareEstimate,
     startFare: rateCard.startFare,
@@ -386,8 +438,10 @@ app.get("/api/quote", (req, res) => {
 });
 
 app.post("/api/rides", (req, res) => {
-  const { pickup, dropoff, category, service, routeType, pickupPoint } = req.body || {};
-  const inferredRouteType = routeType || resolveRouteType(pickup, dropoff);
+  const { pickup, dropoff, category, service, pickupPoint, distance } = req.body || {};
+  const requestedDistance = Math.max(0, Number(distance) || 0);
+  const tripDistanceKm = requestedDistance || randomTripDistance();
+  const inferredRouteType = resolveRouteType(pickup, dropoff, tripDistanceKm);
   const inferredService = getServiceKeyByRouteType(category, inferredRouteType);
   const effectiveService = serviceCatalog[category] && serviceCatalog[category][inferredService] ? inferredService : service;
 
@@ -406,7 +460,7 @@ app.post("/api/rides", (req, res) => {
     routeType: inferredRouteType,
     requestedAt: new Date().toISOString(),
     status: "searching",
-    tripDistanceKm: randomTripDistance(),
+    tripDistanceKm,
     fareEstimate: 0,
     etaMin: null,
     driver: null,
