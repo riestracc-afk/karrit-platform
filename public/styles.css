@@ -50,31 +50,31 @@ body {
 
 .hero-logo {
   width: 100%;
-  max-width: 240px;
+  max-width: 300px;
   height: auto;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   display: block;
   animation: rise 0.6s ease-out both;
 }
 
 @media (max-width: 480px) {
   .hero-logo {
-    max-width: 160px;
-    margin-bottom: 12px;
+    max-width: 200px;
+    margin-bottom: 14px;
   }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
   .hero-logo {
-    max-width: 220px;
-    margin-bottom: 14px;
+    max-width: 260px;
+    margin-bottom: 16px;
   }
 }
 
 @media (min-width: 1024px) {
   .hero-logo {
-    max-width: 280px;
-    margin-bottom: 20px;
+    max-width: 340px;
+    margin-bottom: 22px;
   }
 }
 
