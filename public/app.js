@@ -105,8 +105,7 @@ async function loadPricing() {
     const pricing = await response.json();
 
     if (!Array.isArray(pricing) || pricing.length === 0) {
-      elements.pricingTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 16px;">No hay tarifas disponibles</td></tr>';
-      return;
+      throw new Error("No pricing data");
     }
 
     elements.pricingTableBody.innerHTML = pricing
@@ -121,7 +120,24 @@ async function loadPricing() {
       .join("");
   } catch (error) {
     console.error("Error cargando tarifas:", error);
-    elements.pricingTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 16px;">Error cargando tarifas</td></tr>';
+    // Fallback: mostrar tarifas hardcodeadas
+    const defaultPricing = [
+      { categoryLabel: "Pick-up Mini", startFare: 150, perKmRate: 18, waitPerMinRate: 4 },
+      { categoryLabel: "Especializada 1.1T", startFare: 300, perKmRate: 30, waitPerMinRate: 6 },
+      { categoryLabel: "Camión 3T", startFare: 700, perKmRate: 45, waitPerMinRate: 8 },
+      { categoryLabel: "Camión de Volteo", startFare: 1500, perKmRate: 75, waitPerMinRate: 12 }
+    ];
+
+    elements.pricingTableBody.innerHTML = defaultPricing
+      .map((cat) => `
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 8px; font-weight: 500;">${cat.categoryLabel}</td>
+          <td style="text-align: center; padding: 8px;">$${cat.startFare}</td>
+          <td style="text-align: center; padding: 8px;">$${cat.perKmRate}</td>
+          <td style="text-align: center; padding: 8px;">$${cat.waitPerMinRate}</td>
+        </tr>
+      `)
+      .join("");
   }
 }
 
