@@ -1,5 +1,6 @@
 const express = require("express");
 const http = require("http");
+const fs = require("fs");
 const path = require("path");
 const { Server } = require("socket.io");
 const { v4: uuidv4 } = require("uuid");
@@ -169,13 +170,28 @@ function normalizeText(value) {
     .trim();
 }
 
-const metroKeywords = [
-  "cdmx", "ciudad de mexico", "azcapotzalco", "coyoacan", "cuajimalpa", "gustavo a madero",
-  "iztacalco", "iztapalapa", "magdalena contreras", "miguel hidalgo", "milpa alta", "alvaro obregon",
-  "tlahuac", "tlalpan", "venustiano carranza", "xochimilco", "benito juarez", "cuauhtemoc", "naucalpan",
-  "tlalnepantla", "ecatepec", "nezahualcoyotl", "chimalhuacan", "atizapan", "cuautitlan", "tultitlan",
-  "coacalco", "metepec", "toluca"
-];
+function loadMetroKeywords() {
+  try {
+    const metroZonesPath = path.join(__dirname, "public", "metro-zones.json");
+    const content = fs.readFileSync(metroZonesPath, "utf8");
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed.keywords) && parsed.keywords.length) {
+      return parsed.keywords.map((item) => normalizeText(item));
+    }
+  } catch (error) {
+    console.warn("No se pudo cargar public/metro-zones.json, se usara fallback interno");
+  }
+
+  return [
+    "cdmx", "ciudad de mexico", "estado de mexico", "edomex", "azcapotzalco", "coyoacan", "cuajimalpa",
+    "gustavo a madero", "iztacalco", "iztapalapa", "magdalena contreras", "miguel hidalgo", "milpa alta",
+    "alvaro obregon", "tlahuac", "tlalpan", "venustiano carranza", "xochimilco", "benito juarez", "cuauhtemoc",
+    "naucalpan", "tlalnepantla", "ecatepec", "nezahualcoyotl", "chimalhuacan", "atizapan", "cuautitlan",
+    "tultitlan", "coacalco", "huixquilucan", "chalco", "valle de chalco", "la paz", "tepotzotlan"
+  ];
+}
+
+const metroKeywords = loadMetroKeywords();
 
 function isMetroAddress(value) {
   const text = normalizeText(value);

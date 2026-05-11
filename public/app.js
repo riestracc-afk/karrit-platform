@@ -14,7 +14,8 @@ const state = {
   categories: {},
   selectedCategory: null,
   routeType: "local",
-  autoService: null
+  autoService: null,
+  metroKeywords: []
 };
 
 const elements = {
@@ -57,13 +58,28 @@ const fallbackRateCard = {
   dump_truck: { startFare: 1500, perKmRate: 75, waitPerMinRate: 12 }
 };
 
-const metroKeywords = [
-  "cdmx", "ciudad de mexico", "ciudad de mexico", "azcapotzalco", "coyoacan", "cuajimalpa", "gustavo a madero",
-  "iztacalco", "iztapalapa", "magdalena contreras", "miguel hidalgo", "milpa alta", "alvaro obregon", "tlahuac",
-  "tlalpan", "venustiano carranza", "xochimilco", "benito juarez", "cuauhtemoc", "naucalpan", "tlalnepantla",
-  "ecatepec", "nezahualcoyotl", "chimalhuacan", "atizapan", "cuautitlan", "tultitlan", "coacalco", "metepec",
-  "toluca"
+const defaultMetroKeywords = [
+  "cdmx", "ciudad de mexico", "estado de mexico", "edomex", "azcapotzalco", "coyoacan", "cuajimalpa",
+  "gustavo a madero", "iztacalco", "iztapalapa", "magdalena contreras", "miguel hidalgo", "milpa alta",
+  "alvaro obregon", "tlahuac", "tlalpan", "venustiano carranza", "xochimilco", "benito juarez", "cuauhtemoc",
+  "naucalpan", "tlalnepantla", "ecatepec", "nezahualcoyotl", "chimalhuacan", "atizapan", "cuautitlan",
+  "tultitlan", "coacalco", "huixquilucan", "chalco", "valle de chalco", "la paz", "tepotzotlan"
 ];
+
+async function loadMetroZones() {
+  try {
+    const response = await fetch("/metro-zones.json");
+    const data = await response.json();
+    if (Array.isArray(data.keywords) && data.keywords.length) {
+      state.metroKeywords = data.keywords.map((item) => normalizeText(item));
+      return;
+    }
+  } catch (error) {
+    console.warn("No se pudo cargar metro-zones.json, se usara fallback local");
+  }
+
+  state.metroKeywords = defaultMetroKeywords.map((item) => normalizeText(item));
+}
 
 function normalizeText(value) {
   return String(value || "")
@@ -79,7 +95,8 @@ function isMetroAddress(value) {
     return false;
   }
 
-  return metroKeywords.some((keyword) => text.includes(keyword));
+  const source = state.metroKeywords.length ? state.metroKeywords : defaultMetroKeywords;
+  return source.some((keyword) => text.includes(keyword));
 }
 
 function detectRouteType(pickup, dropoff) {
@@ -422,6 +439,7 @@ async function cancelRide() {
 }
 
 async function init() {
+  await loadMetroZones();
   await loadCategories();
   await loadPricing();
 
