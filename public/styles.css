@@ -50,7 +50,7 @@ body {
 
 .brand-logo {
   margin-bottom: 10px;
-  max-width: 560px;
+  max-width: 520px;
 }
 
 .brand-logo svg {
@@ -94,7 +94,22 @@ body {
 @media (max-width: 720px) {
   .brand-logo {
     max-width: 100%;
-    margin-bottom: 8px;
+    margin: 0 auto 10px;
+  }
+
+  .brand-logo svg {
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .brand-logo svg text:first-of-type {
+    font-size: 52px;
+    letter-spacing: 3px;
+  }
+
+  .brand-logo svg text:last-of-type {
+    font-size: 13px;
+    letter-spacing: 1.3px;
   }
 
   .hero h1 {
