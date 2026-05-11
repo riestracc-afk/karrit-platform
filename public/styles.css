@@ -48,6 +48,15 @@ body {
   animation: rise 0.8s ease-out both;
 }
 
+.hero-logo {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  margin-bottom: 16px;
+  display: block;
+  animation: rise 0.6s ease-out both;
+}
+
 .eyebrow {
   margin: 0;
   font-size: 0.78rem;
