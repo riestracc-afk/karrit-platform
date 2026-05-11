@@ -12,7 +12,9 @@ const state = {
   currentRide: null,
   drivers: [],
   categories: {},
-  selectedCategory: null
+  selectedCategory: null,
+  routeType: "local",
+  autoService: null
 };
 
 const elements = {
@@ -47,6 +49,84 @@ const statusLabel = {
 };
 
 const dotMap = new Map();
+
+const fallbackRateCard = {
+  pickup_mini: { startFare: 150, perKmRate: 18, waitPerMinRate: 4 },
+  specialized_1t: { startFare: 300, perKmRate: 30, waitPerMinRate: 6 },
+  truck_3t: { startFare: 700, perKmRate: 45, waitPerMinRate: 8 },
+  dump_truck: { startFare: 1500, perKmRate: 75, waitPerMinRate: 12 }
+};
+
+const metroKeywords = [
+  "cdmx", "ciudad de mexico", "ciudad de mexico", "azcapotzalco", "coyoacan", "cuajimalpa", "gustavo a madero",
+  "iztacalco", "iztapalapa", "magdalena contreras", "miguel hidalgo", "milpa alta", "alvaro obregon", "tlahuac",
+  "tlalpan", "venustiano carranza", "xochimilco", "benito juarez", "cuauhtemoc", "naucalpan", "tlalnepantla",
+  "ecatepec", "nezahualcoyotl", "chimalhuacan", "atizapan", "cuautitlan", "tultitlan", "coacalco", "metepec",
+  "toluca"
+];
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function isMetroAddress(value) {
+  const text = normalizeText(value);
+  if (!text) {
+    return false;
+  }
+
+  return metroKeywords.some((keyword) => text.includes(keyword));
+}
+
+function detectRouteType(pickup, dropoff) {
+  const isPickupMetro = isMetroAddress(pickup);
+  const isDropoffMetro = isMetroAddress(dropoff);
+  return isPickupMetro && isDropoffMetro ? "local" : "foraneo";
+}
+
+function resolveAutoService(categoryKey, routeType) {
+  const categoryServices = {
+    pickup_mini: {
+      local: { key: "local", label: "Recorrido Local" },
+      foraneo: { key: "regional", label: "Recorrido Foraneo" }
+    },
+    specialized_1t: {
+      local: { key: "fragile", label: "Carga Fragil (Local)" },
+      foraneo: { key: "structural", label: "Carga Estructural (Foraneo)" }
+    },
+    truck_3t: {
+      local: { key: "standard", label: "Carga Estandar (Local)" },
+      foraneo: { key: "heavy", label: "Carga Pesada (Foraneo)" }
+    },
+    dump_truck: {
+      local: { key: "bulk", label: "Carga a Granel (Local)" },
+      foraneo: { key: "specialized", label: "Carga Especializada (Foraneo)" }
+    }
+  };
+
+  const selected = categoryServices[categoryKey] || categoryServices.pickup_mini;
+  return selected[routeType] || selected.local;
+}
+
+function refreshAutoServiceUI() {
+  const pickup = elements.pickupInput.value;
+  const dropoff = elements.dropoffInput.value;
+  state.routeType = detectRouteType(pickup, dropoff);
+
+  if (!state.selectedCategory) {
+    state.autoService = null;
+    elements.serviceSelect.innerHTML = '<option value="">Primero selecciona una categoria</option>';
+    return;
+  }
+
+  state.autoService = resolveAutoService(state.selectedCategory, state.routeType);
+  const suffix = state.routeType === "foraneo" ? " (+50%)" : "";
+  elements.serviceSelect.innerHTML = `<option value="${state.autoService.key}" selected>${state.autoService.label}${suffix}</option>`;
+}
 
 function formatCurrency(n) {
   return new Intl.NumberFormat("es-ES", {
@@ -106,47 +186,32 @@ async function loadCategories() {
 async function loadServices(categoryKey) {
   try {
     const response = await fetch(`/api/services/${categoryKey}`);
-    const services = await response.json();
-
-    elements.serviceSelect.innerHTML = '<option value="">Selecciona un servicio...</option>';
-    Object.entries(services).forEach(([key, svc]) => {
-      const option = document.createElement("option");
-      option.value = key;
-      option.textContent = svc.label;
-      elements.serviceSelect.appendChild(option);
-    });
+    await response.json();
   } catch (error) {
     console.error("Error cargando servicios:", error);
-    // Fallback: servicios por categoría
-    const defaultServices = {
-      pickup_mini: { local: { label: "Recorrido Local" }, regional: { label: "Recorrido Regional" } },
-      specialized_1t: { fragile: { label: "Carga Frágil" }, structural: { label: "Carga Estructural" } },
-      truck_3t: { standard: { label: "Carga Estándar" }, heavy: { label: "Carga Pesada" } },
-      dump_truck: { bulk: { label: "Carga a Granel" }, specialized: { label: "Carga Especializada" } }
-    };
-
-    const services = defaultServices[categoryKey] || {};
-    elements.serviceSelect.innerHTML = '<option value="">Selecciona un servicio...</option>';
-    Object.entries(services).forEach(([key, svc]) => {
-      const option = document.createElement("option");
-      option.value = key;
-      option.textContent = svc.label;
-      elements.serviceSelect.appendChild(option);
-    });
   }
+
+  refreshAutoServiceUI();
 }
 
 async function recalculateQuote() {
-  if (!state.selectedCategory || !elements.serviceSelect.value) {
+  if (!state.selectedCategory || !state.autoService) {
     return;
   }
 
   const distance = randomDistance();
-  const response = await fetch(
-    `/api/quote?category=${state.selectedCategory}&service=${elements.serviceSelect.value}&distance=${distance}`
-  );
-  const data = await response.json();
-  elements.fareEstimate.textContent = formatCurrency(data.fareEstimate);
+  try {
+    const response = await fetch(
+      `/api/quote?category=${state.selectedCategory}&service=${state.autoService.key}&distance=${distance}&routeType=${state.routeType}`
+    );
+    const data = await response.json();
+    elements.fareEstimate.textContent = formatCurrency(data.fareEstimate);
+  } catch (error) {
+    const rateCard = fallbackRateCard[state.selectedCategory] || fallbackRateCard.pickup_mini;
+    const baseTotal = rateCard.startFare + distance * rateCard.perKmRate;
+    const routeMultiplier = state.routeType === "foraneo" ? 1.5 : 1;
+    elements.fareEstimate.textContent = formatCurrency(baseTotal * routeMultiplier);
+  }
 }
 
 async function loadPricing() {
@@ -295,8 +360,8 @@ async function createRide(event) {
     return;
   }
 
-  if (!state.selectedCategory || !elements.serviceSelect.value) {
-    alert("Por favor selecciona categoría y servicio");
+  if (!state.selectedCategory || !state.autoService) {
+    alert("Por favor selecciona categoria y captura origen y destino");
     return;
   }
 
@@ -304,7 +369,8 @@ async function createRide(event) {
     pickup: elements.pickupInput.value.trim(),
     dropoff: elements.dropoffInput.value.trim(),
     category: state.selectedCategory,
-    service: elements.serviceSelect.value,
+    service: state.autoService.key,
+    routeType: state.routeType,
     pickupPoint: { lat: 40.4168, lng: -3.7038 }
   };
 
@@ -363,12 +429,21 @@ async function init() {
     state.selectedCategory = e.target.value;
     if (state.selectedCategory) {
       await loadServices(state.selectedCategory);
-      elements.serviceSelect.disabled = false;
+      elements.serviceSelect.disabled = true;
     } else {
-      elements.serviceSelect.innerHTML = '<option value="">Primero selecciona una categoría</option>';
+      state.autoService = null;
+      elements.serviceSelect.innerHTML = '<option value="">Primero selecciona una categoria</option>';
       elements.serviceSelect.disabled = true;
     }
     elements.fareEstimate.textContent = "MXN --.--";
+  });
+
+  elements.pickupInput.addEventListener("input", () => {
+    refreshAutoServiceUI();
+  });
+
+  elements.dropoffInput.addEventListener("input", () => {
+    refreshAutoServiceUI();
   });
 
   elements.rideForm.addEventListener("submit", createRide);

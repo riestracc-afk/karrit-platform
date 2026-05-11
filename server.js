@@ -161,7 +161,51 @@ function randomTripDistance() {
   return Number((3 + Math.random() * 35).toFixed(1));
 }
 
-function estimateFare(distance, categoryKey, serviceKey, waitMinutes = 0) {
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+const metroKeywords = [
+  "cdmx", "ciudad de mexico", "azcapotzalco", "coyoacan", "cuajimalpa", "gustavo a madero",
+  "iztacalco", "iztapalapa", "magdalena contreras", "miguel hidalgo", "milpa alta", "alvaro obregon",
+  "tlahuac", "tlalpan", "venustiano carranza", "xochimilco", "benito juarez", "cuauhtemoc", "naucalpan",
+  "tlalnepantla", "ecatepec", "nezahualcoyotl", "chimalhuacan", "atizapan", "cuautitlan", "tultitlan",
+  "coacalco", "metepec", "toluca"
+];
+
+function isMetroAddress(value) {
+  const text = normalizeText(value);
+  if (!text) {
+    return false;
+  }
+  return metroKeywords.some((keyword) => text.includes(keyword));
+}
+
+function resolveRouteType(pickup, dropoff) {
+  const pickupMetro = isMetroAddress(pickup);
+  const dropoffMetro = isMetroAddress(dropoff);
+  return pickupMetro && dropoffMetro ? "local" : "foraneo";
+}
+
+function getServiceKeyByRouteType(categoryKey, routeType = "local") {
+  const services = serviceCatalog[categoryKey] || serviceCatalog.pickup_mini;
+  const keys = Object.keys(services);
+  if (!keys.length) {
+    return "local";
+  }
+
+  if (routeType === "foraneo") {
+    return keys[1] || keys[0];
+  }
+
+  return keys[0];
+}
+
+function estimateFare(distance, categoryKey, serviceKey, waitMinutes = 0, routeType = "local") {
   const services = serviceCatalog[categoryKey] || serviceCatalog.pickup_mini;
   const service = services[serviceKey] || Object.values(services)[0];
   const rateCard = categoryRateCard[categoryKey] || categoryRateCard.pickup_mini;
@@ -175,7 +219,8 @@ function estimateFare(distance, categoryKey, serviceKey, waitMinutes = 0) {
     normalizedDistance * rateCard.perKm +
     normalizedWait * rateCard.waitPerMin;
 
-  const total = subtotal * (service.multiplier ?? 1) * demandFactor;
+  const routeMultiplier = routeType === "foraneo" ? 1.5 : 1;
+  const total = subtotal * (service.multiplier ?? 1) * routeMultiplier * demandFactor;
   return Number(total.toFixed(2));
 }
 
@@ -191,6 +236,7 @@ function serializeRide(ride) {
     dropoff: ride.dropoff,
     category: ride.category,
     service: ride.service,
+    routeType: ride.routeType,
     status: ride.status,
     requestedAt: ride.requestedAt,
     fareEstimate: ride.fareEstimate,
@@ -297,7 +343,8 @@ app.get("/api/pricing", (_req, res) => {
 app.get("/api/quote", (req, res) => {
   const distance = Number(req.query.distance || randomTripDistance());
   const category = String(req.query.category || "pickup_mini");
-  const service = String(req.query.service || "local");
+  const routeType = String(req.query.routeType || "local");
+  const service = String(req.query.service || getServiceKeyByRouteType(category, routeType));
   const waitMinutes = Number(req.query.waitMinutes || 0);
 
   const services = serviceCatalog[category];
@@ -305,12 +352,13 @@ app.get("/api/quote", (req, res) => {
     return res.status(400).json({ error: "Categoría o servicio inválido" });
   }
 
-  const fareEstimate = estimateFare(distance, category, service, waitMinutes);
+  const fareEstimate = estimateFare(distance, category, service, waitMinutes, routeType);
   const rateCard = categoryRateCard[category] || categoryRateCard.pickup_mini;
 
   return res.json({
     category,
     service,
+    routeType,
     distance,
     waitMinutes,
     fareEstimate,
@@ -322,9 +370,12 @@ app.get("/api/quote", (req, res) => {
 });
 
 app.post("/api/rides", (req, res) => {
-  const { pickup, dropoff, category, service, pickupPoint } = req.body || {};
+  const { pickup, dropoff, category, service, routeType, pickupPoint } = req.body || {};
+  const inferredRouteType = routeType || resolveRouteType(pickup, dropoff);
+  const inferredService = getServiceKeyByRouteType(category, inferredRouteType);
+  const effectiveService = serviceCatalog[category] && serviceCatalog[category][inferredService] ? inferredService : service;
 
-  if (!pickup || !dropoff || !serviceCatalog[category] || !serviceCatalog[category][service]) {
+  if (!pickup || !dropoff || !serviceCatalog[category] || !serviceCatalog[category][effectiveService]) {
     return res.status(400).json({
       error: "Debes enviar pickup, dropoff, categoría y servicio válidos"
     });
@@ -335,7 +386,8 @@ app.post("/api/rides", (req, res) => {
     pickup,
     dropoff,
     category,
-    service,
+    service: effectiveService,
+    routeType: inferredRouteType,
     requestedAt: new Date().toISOString(),
     status: "searching",
     tripDistanceKm: randomTripDistance(),
@@ -346,7 +398,7 @@ app.post("/api/rides", (req, res) => {
     progress: 0
   };
 
-  ride.fareEstimate = estimateFare(ride.tripDistanceKm, ride.category, ride.service);
+  ride.fareEstimate = estimateFare(ride.tripDistanceKm, ride.category, ride.service, 0, ride.routeType);
   appendTimeline(ride, "Buscando conductor en tu categoría");
 
   rides.set(ride.id, ride);
