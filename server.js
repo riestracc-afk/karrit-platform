@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/logo", express.static(path.join(__dirname, "logo")));
 
 const cityCenter = { lat: 40.4168, lng: -3.7038 };
 
