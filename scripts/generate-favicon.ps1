@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $publicDir = Join-Path $root "public"
-$sourcePath = Join-Path $publicDir "logo-karryt-source.jpg"
+$sourcePath = Join-Path $publicDir "logo-karryt-oficial.png"
 $tmpDir = Join-Path $publicDir ".tmp-favicon"
 $icoPath = Join-Path $publicDir "favicon.ico"
 

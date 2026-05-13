@@ -1,0 +1,32 @@
+{
+  "foraneoThresholdKm": 40,
+  "includedKmInStartFare": 10,
+  "foraneoMultiplier": 1.2,
+  "defaultLoadingMinutes": 30,
+  "defaultTransferMinutes": 30,
+  "defaultUnloadingMinutes": 30,
+  "loadPersonnelUnitCost": 150,
+  "unloadPersonnelUnitCost": 150,
+  "categories": {
+    "pickup_mini": {
+      "startFare": 150,
+      "extraKmRate": 10,
+      "operationalPerMinRate": 4
+    },
+    "specialized_1t": {
+      "startFare": 300,
+      "extraKmRate": 14,
+      "operationalPerMinRate": 5
+    },
+    "truck_3t": {
+      "startFare": 700,
+      "extraKmRate": 18,
+      "operationalPerMinRate": 8
+    },
+    "dump_truck": {
+      "startFare": 1800,
+      "extraKmRate": 30,
+      "operationalPerMinRate": 12
+    }
+  }
+}

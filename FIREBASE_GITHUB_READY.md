@@ -1,4 +1,4 @@
-# ✅ Firebase + GitHub Setup Completado
+﻿# ✅ Firebase + GitHub Setup Completado
 
 ## 📦 Qué Hemos Preparado
 
@@ -27,7 +27,7 @@
 ### **1️⃣ Crear Proyecto Firebase** (2 minutos)
 ```
 https://console.firebase.google.com → Nuevo Proyecto
-Nombre: karrit-platform
+Nombre: Karryt-platform
 ```
 
 ### **2️⃣ Obtener Credenciales** (1 minuto)
@@ -39,14 +39,14 @@ Descargar JSON privado
 ### **3️⃣ Crear Repositorio GitHub** (1 minuto)
 ```
 https://github.com/new
-Nombre: karrit-platform
+Nombre: Karryt-platform
 Public
 ```
 
 ### **4️⃣ Conectar Git y Hacer Push** (2 minutos)
 ```bash
-cd "c:\Proyectos\Proyecto KARRIT"
-git remote add origin https://github.com/TU_USUARIO/karrit-platform.git
+cd "c:\Proyectos\Proyecto Karryt"
+git remote add origin https://github.com/TU_USUARIO/Karryt-platform.git
 git push -u origin main
 ```
 
@@ -70,7 +70,7 @@ Llenar con datos del JSON descargado
 | Aspecto | Antes | Después |
 |--------|-------|---------|
 | Base de datos | En memoria (pierde datos) | Firestore (persistente) |
-| Hosting | localhost:3000 | `https://karrit-platform.web.app` |
+| Hosting | localhost:3000 | `https://Karryt-platform.web.app` |
 | Versionamiento | Nada | GitHub con historial completo |
 | Deploy | Manual | Automático en cada push |
 | Credenciales | En código | Variables de entorno seguras |
@@ -81,7 +81,7 @@ Llenar con datos del JSON descargado
 ## 📁 Estructura Nueva
 
 ```
-c:\Proyectos\Proyecto KARRIT
+c:\Proyectos\Proyecto Karryt
 ├── config/
 │   ├── firebase.js       (Inicialización Firebase)
 │   └── db.js             (Interfaz unificada de BD)
@@ -102,7 +102,7 @@ c:\Proyectos\Proyecto KARRIT
 ## 🚀 Timeline
 
 **Hoy (10 minutos):** Creas cuentas y configuras secrets  
-**Resultado:** App en `https://karrit-platform.web.app` funcionando con datos persistentes
+**Resultado:** App en `https://Karryt-platform.web.app` funcionando con datos persistentes
 
 ---
 
@@ -132,3 +132,4 @@ Cualquier `git push` futuro redeploy automáticamente. 🔄
 Ejecuta los 6 pasos del SETUP_FIREBASE_GITHUB.md y te digo dónde estancarse.
 
 **¿Listo para empezar? Abre Firebase Console. Yo espero aquí.** 🚀
+

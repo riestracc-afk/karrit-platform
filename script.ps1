@@ -1,5 +1,5 @@
 ﻿Add-Type -AssemblyName System.Drawing
-$srcImg = [System.Drawing.Image]::FromFile('C:\Proyectos\Proyecto KARRIT\public\logo-karryt.png')
+$srcImg = [System.Drawing.Image]::FromFile('C:\Proyectos\Proyecto Karryt\public\logo-karryt-oficial.png')
 $targets = @(
     @{ Path = 'public\favicon-32x32.png'; Size = 32 },
     @{ Path = 'public\apple-touch-icon.png'; Size = 180 },
@@ -17,7 +17,7 @@ foreach ($target in $targets) {
     $ratio = [Math]::Min($drawSize / $srcImg.Width, $drawSize / $srcImg.Height)
     $dw = [int]($srcImg.Width * $ratio); $dh = [int]($srcImg.Height * $ratio)
     $g.DrawImage($srcImg, [int](($target.Size - $dw) / 2), [int](($target.Size - $dh) / 2), $dw, $dh)
-    $bmp.Save((Join-Path 'C:\Proyectos\Proyecto KARRIT' $target.Path), [System.Drawing.Imaging.ImageFormat]::Png)
+    $bmp.Save((Join-Path 'C:\Proyectos\Proyecto Karryt' $target.Path), [System.Drawing.Imaging.ImageFormat]::Png)
     $g.Dispose(); $bmp.Dispose()
 }
 $srcImg.Dispose()
@@ -26,3 +26,4 @@ Get-ChildItem -Path public\favicon-32x32.png, public\apple-touch-icon.png, publi
     [PSCustomObject]@{ Path = $_.Name; Dimensions = "$($img.Width)x$($img.Height)"; Bytes = $_.Length }
     $img.Dispose()
 } | Format-Table
+

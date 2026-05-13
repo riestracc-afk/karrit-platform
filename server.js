@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -10,14 +10,194 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
+const DATA_DIR = path.join(__dirname, "data");
+const FAVORITES_FILE = path.join(DATA_DIR, "address-favorites.json");
+const RECENTS_FILE = path.join(DATA_DIR, "address-recents.json");
+const ADMIN_PRICING_FILE = path.join(DATA_DIR, "admin-pricing-config.json");
+const FLUTTER_WEB_DIR = path.join(__dirname, "flutter_app", "build", "web");
+const FLUTTER_WEB_INDEX = path.join(FLUTTER_WEB_DIR, "index.html");
+const hasFlutterWebBuild = fs.existsSync(FLUTTER_WEB_INDEX);
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+if (hasFlutterWebBuild) {
+  app.use(express.static(FLUTTER_WEB_DIR));
+}
 app.use("/logo", express.static(path.join(__dirname, "logo")));
 
-const cityCenter = { lat: 40.4168, lng: -3.7038 };
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
 
-// Catálogo de categorías y vehículos KARRIT
+function normalizeAddressFavorite(item) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const displayName = String(item.displayName || item.display_name || item.name || "").trim();
+  const lat = Number(item.lat);
+  const lng = Number(item.lng ?? item.lon);
+
+  if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  return {
+    displayName,
+    lat: Number(lat.toFixed(6)),
+    lng: Number(lng.toFixed(6))
+  };
+}
+
+function loadFavoriteAddresses() {
+  ensureDataDir();
+
+  try {
+    if (!fs.existsSync(FAVORITES_FILE)) {
+      return [];
+    }
+
+    const raw = fs.readFileSync(FAVORITES_FILE, "utf8");
+    if (!raw.trim()) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.map(normalizeAddressFavorite).filter(Boolean);
+  } catch (error) {
+    console.warn("No se pudieron cargar favoritos de direcciones:", error.message);
+    return [];
+  }
+}
+
+function saveFavoriteAddresses(addresses) {
+  ensureDataDir();
+  const normalized = Array.isArray(addresses) ? addresses.map(normalizeAddressFavorite).filter(Boolean) : [];
+  fs.writeFileSync(FAVORITES_FILE, JSON.stringify(normalized, null, 2), "utf8");
+  return normalized;
+}
+
+let favoriteAddresses = loadFavoriteAddresses();
+
+function loadRecentAddresses() {
+  ensureDataDir();
+
+  try {
+    if (!fs.existsSync(RECENTS_FILE)) {
+      return [];
+    }
+
+    const raw = fs.readFileSync(RECENTS_FILE, "utf8");
+    if (!raw.trim()) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.map(normalizeAddressFavorite).filter(Boolean);
+  } catch (error) {
+    console.warn("No se pudieron cargar recientes de direcciones:", error.message);
+    return [];
+  }
+}
+
+function saveRecentAddresses(addresses) {
+  ensureDataDir();
+  const normalized = Array.isArray(addresses) ? addresses.map(normalizeAddressFavorite).filter(Boolean) : [];
+  fs.writeFileSync(RECENTS_FILE, JSON.stringify(normalized, null, 2), "utf8");
+  return normalized;
+}
+
+let recentAddresses = loadRecentAddresses();
+
+const defaultAdminPricingConfig = {
+  foraneoThresholdKm: 22,
+  includedKmInStartFare: 10,
+  foraneoMultiplier: 1.5,
+  defaultLoadingMinutes: 30,
+  defaultTransferMinutes: 20,
+  defaultUnloadingMinutes: 30,
+  loadPersonnelUnitCost: 80,
+  unloadPersonnelUnitCost: 80,
+  categories: {
+    pickup_mini: { startFare: 150, extraKmRate: 18, operationalPerMinRate: 4 },
+    specialized_1t: { startFare: 300, extraKmRate: 30, operationalPerMinRate: 6 },
+    truck_3t: { startFare: 700, extraKmRate: 45, operationalPerMinRate: 8 },
+    dump_truck: { startFare: 1500, extraKmRate: 75, operationalPerMinRate: 12 }
+  }
+};
+
+function cloneDefaultAdminPricingConfig() {
+  return JSON.parse(JSON.stringify(defaultAdminPricingConfig));
+}
+
+function normalizeAdminPricingConfig(input) {
+  const base = cloneDefaultAdminPricingConfig();
+  const data = input && typeof input === "object" ? input : {};
+
+  const toNumberOr = (value, fallback) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  };
+
+  base.foraneoThresholdKm = Math.max(0, toNumberOr(data.foraneoThresholdKm, base.foraneoThresholdKm));
+  base.includedKmInStartFare = Math.max(0, toNumberOr(data.includedKmInStartFare, base.includedKmInStartFare));
+  base.foraneoMultiplier = Math.max(1, toNumberOr(data.foraneoMultiplier, base.foraneoMultiplier));
+  base.defaultLoadingMinutes = Math.max(0, toNumberOr(data.defaultLoadingMinutes, base.defaultLoadingMinutes));
+  base.defaultTransferMinutes = Math.max(0, toNumberOr(data.defaultTransferMinutes, base.defaultTransferMinutes));
+  base.defaultUnloadingMinutes = Math.max(0, toNumberOr(data.defaultUnloadingMinutes, base.defaultUnloadingMinutes));
+  base.loadPersonnelUnitCost = Math.max(0, toNumberOr(data.loadPersonnelUnitCost, base.loadPersonnelUnitCost));
+  base.unloadPersonnelUnitCost = Math.max(0, toNumberOr(data.unloadPersonnelUnitCost, base.unloadPersonnelUnitCost));
+
+  const srcCategories = data.categories && typeof data.categories === "object" ? data.categories : {};
+  Object.keys(base.categories).forEach((key) => {
+    const src = srcCategories[key] && typeof srcCategories[key] === "object" ? srcCategories[key] : {};
+    base.categories[key].startFare = Math.max(0, toNumberOr(src.startFare, base.categories[key].startFare));
+    base.categories[key].extraKmRate = Math.max(0, toNumberOr(src.extraKmRate, base.categories[key].extraKmRate));
+    base.categories[key].operationalPerMinRate = Math.max(0, toNumberOr(src.operationalPerMinRate, base.categories[key].operationalPerMinRate));
+  });
+
+  return base;
+}
+
+function loadAdminPricingConfig() {
+  ensureDataDir();
+  try {
+    if (!fs.existsSync(ADMIN_PRICING_FILE)) {
+      return cloneDefaultAdminPricingConfig();
+    }
+
+    const raw = fs.readFileSync(ADMIN_PRICING_FILE, "utf8");
+    if (!raw.trim()) {
+      return cloneDefaultAdminPricingConfig();
+    }
+
+    const parsed = JSON.parse(raw);
+    return normalizeAdminPricingConfig(parsed);
+  } catch (error) {
+    console.warn("No se pudo cargar configuración administrativa de tarifas:", error.message);
+    return cloneDefaultAdminPricingConfig();
+  }
+}
+
+function saveAdminPricingConfig(config) {
+  ensureDataDir();
+  const normalized = normalizeAdminPricingConfig(config);
+  fs.writeFileSync(ADMIN_PRICING_FILE, JSON.stringify(normalized, null, 2), "utf8");
+  return normalized;
+}
+
+const cityCenter = { lat: 20.7214, lng: -103.3918 };
+
+// Catálogo de categorías y vehículos Karryt
 const vehicleCategories = {
   pickup_mini: {
     id: "pickup_mini",
@@ -36,7 +216,7 @@ const vehicleCategories = {
   },
   specialized_1t: {
     id: "specialized_1t",
-    label: "Especializada 1.1T",
+    label: "Especializada 1 tonelada",
     capacity: "Hasta 1.1 tonelada",
     description: "Camionetas especializadas para carga estructurada",
     subtypes: [
@@ -55,7 +235,7 @@ const vehicleCategories = {
   },
   truck_3t: {
     id: "truck_3t",
-    label: "Camión 3T",
+    label: "Especializada 3 tonelada",
     capacity: "Hasta 3 toneladas",
     description: "Camiones medianos para carga consolidada",
     vehicles: [
@@ -88,7 +268,6 @@ const serviceCatalog = {
     regional: { label: "Recorrido Regional", multiplier: 1.05 }
   },
   specialized_1t: {
-    fragile: { label: "Carga Frágil", multiplier: 1.02 },
     structural: { label: "Carga Estructural", multiplier: 1.08 }
   },
   truck_3t: {
@@ -133,6 +312,27 @@ const tripRules = {
   includedKmInStartFare: 10,
   foraneoMultiplier: 1.5
 };
+
+let adminPricingConfig = loadAdminPricingConfig();
+
+function applyAdminPricingConfig(config) {
+  const normalized = normalizeAdminPricingConfig(config);
+
+  tripRules.foraneoThresholdKm = Number(normalized.foraneoThresholdKm.toFixed(2));
+  tripRules.includedKmInStartFare = Number(normalized.includedKmInStartFare.toFixed(2));
+  tripRules.foraneoMultiplier = Number(normalized.foraneoMultiplier.toFixed(2));
+
+  Object.keys(categoryRateCard).forEach((categoryKey) => {
+    const categoryConfig = normalized.categories[categoryKey] || normalized.categories.pickup_mini;
+    categoryRateCard[categoryKey].startFare = Number(categoryConfig.startFare.toFixed(2));
+    categoryRateCard[categoryKey].perKm = Number(categoryConfig.extraKmRate.toFixed(2));
+    categoryRateCard[categoryKey].waitPerMin = Number(categoryConfig.operationalPerMinRate.toFixed(2));
+  });
+
+  return normalized;
+}
+
+adminPricingConfig = applyAdminPricingConfig(adminPricingConfig);
 
 // Generar conductores con vehículos asignados
 const drivers = Array.from({ length: 18 }, (_, i) => {
@@ -215,13 +415,14 @@ function getServiceKeyByRouteType(categoryKey, routeType = "local") {
   return keys[0];
 }
 
-function estimateFare(distance, categoryKey, serviceKey, waitMinutes = 0, routeType = "local") {
+function estimateFare(distance, categoryKey, serviceKey, waitMinutes = 0, routeType = "local", personnelSurcharge = 0) {
   const services = serviceCatalog[categoryKey] || serviceCatalog.pickup_mini;
   const service = services[serviceKey] || Object.values(services)[0];
   const rateCard = categoryRateCard[categoryKey] || categoryRateCard.pickup_mini;
 
   const normalizedDistance = Math.max(0, Number(distance) || 0);
   const normalizedWait = Math.max(0, Number(waitMinutes) || 0);
+  const normalizedPersonnel = Math.max(0, Number(personnelSurcharge) || 0);
   const demandFactor = 1 + Math.random() * 0.12;
   const includedKm = Math.max(0, Number(tripRules.includedKmInStartFare) || 0);
   const billableDistance = Math.max(0, normalizedDistance - includedKm);
@@ -229,7 +430,8 @@ function estimateFare(distance, categoryKey, serviceKey, waitMinutes = 0, routeT
   const subtotal =
     rateCard.startFare +
     billableDistance * rateCard.perKm +
-    normalizedWait * rateCard.waitPerMin;
+    normalizedWait * rateCard.waitPerMin +
+    normalizedPersonnel;
 
   const routeMultiplier = routeType === "foraneo" ? tripRules.foraneoMultiplier : 1;
   const total = subtotal * (service.multiplier ?? 1) * routeMultiplier * demandFactor;
@@ -353,6 +555,62 @@ app.get("/api/pricing", (_req, res) => {
   res.json(pricing);
 });
 
+app.get("/api/drivers", (_req, res) => {
+  return res.json(drivers);
+});
+
+app.patch("/api/drivers/:id/availability", (req, res) => {
+  const { id } = req.params;
+  const available = req.body?.available;
+
+  if (typeof available !== "boolean") {
+    return res.status(400).json({ error: "available debe ser boolean" });
+  }
+
+  const driver = drivers.find((item) => item.id === id);
+  if (!driver) {
+    return res.status(404).json({ error: "Conductor no encontrado" });
+  }
+
+  driver.available = available;
+  broadcastDrivers();
+  return res.json(driver);
+});
+
+app.get("/api/address-favorites", (_req, res) => {
+  res.json({ favorites: favoriteAddresses });
+});
+
+app.put("/api/address-favorites", (req, res) => {
+  const payload = req.body;
+  const items = Array.isArray(payload?.favorites) ? payload.favorites : [];
+  const normalized = items.map(normalizeAddressFavorite).filter(Boolean);
+
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ error: "favorites debe ser un arreglo" });
+  }
+
+  favoriteAddresses = saveFavoriteAddresses(normalized);
+  return res.json({ ok: true, favorites: favoriteAddresses });
+});
+
+app.get("/api/address-recents", (_req, res) => {
+  res.json({ recents: recentAddresses });
+});
+
+app.put("/api/address-recents", (req, res) => {
+  const payload = req.body;
+  const items = Array.isArray(payload?.recents) ? payload.recents : [];
+  const normalized = items.map(normalizeAddressFavorite).filter(Boolean);
+
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ error: "recents debe ser un arreglo" });
+  }
+
+  recentAddresses = saveRecentAddresses(normalized);
+  return res.json({ ok: true, recents: recentAddresses });
+});
+
 app.get("/api/trip-rules", (_req, res) => {
   return res.json({
     ...tripRules,
@@ -390,10 +648,109 @@ app.put("/api/admin/trip-rules", (req, res) => {
   tripRules.foraneoMultiplier = Number(foraneoMultiplier.toFixed(2));
   tripRules.municipalities = municipalities;
 
+  adminPricingConfig.foraneoThresholdKm = tripRules.foraneoThresholdKm;
+  adminPricingConfig.includedKmInStartFare = tripRules.includedKmInStartFare;
+  adminPricingConfig.foraneoMultiplier = tripRules.foraneoMultiplier;
+  adminPricingConfig = saveAdminPricingConfig(adminPricingConfig);
+
   return res.json({
     ok: true,
     tripRules: {
       ...tripRules,
+      municipalities: [...tripRules.municipalities]
+    }
+  });
+});
+
+app.get("/api/admin/pricing-config", (_req, res) => {
+  return res.json({
+    ...adminPricingConfig,
+    categories: { ...adminPricingConfig.categories },
+    municipalities: [...tripRules.municipalities]
+  });
+});
+
+app.put("/api/admin/pricing-config", (req, res) => {
+  const payload = req.body || {};
+  const validationErrors = [];
+
+  const numericField = (name, minValue) => {
+    const value = Number(payload[name]);
+    if (!Number.isFinite(value) || value < minValue) {
+      validationErrors.push(`${name} inválido`);
+      return null;
+    }
+    return value;
+  };
+
+  const foraneoThresholdKm = numericField("foraneoThresholdKm", 0);
+  const includedKmInStartFare = numericField("includedKmInStartFare", 0);
+  const foraneoMultiplier = numericField("foraneoMultiplier", 1);
+  const defaultLoadingMinutes = numericField("defaultLoadingMinutes", 0);
+  const defaultTransferMinutes = numericField("defaultTransferMinutes", 0);
+  const defaultUnloadingMinutes = numericField("defaultUnloadingMinutes", 0);
+  const loadPersonnelUnitCost = numericField("loadPersonnelUnitCost", 0);
+  const unloadPersonnelUnitCost = numericField("unloadPersonnelUnitCost", 0);
+
+  const categoriesPayload = payload.categories && typeof payload.categories === "object" ? payload.categories : null;
+  if (!categoriesPayload) {
+    validationErrors.push("categories inválido");
+  }
+
+  const normalizedCategories = {};
+  Object.keys(defaultAdminPricingConfig.categories).forEach((categoryKey) => {
+    const rawCategory = categoriesPayload && categoriesPayload[categoryKey];
+    if (!rawCategory || typeof rawCategory !== "object") {
+      validationErrors.push(`categories.${categoryKey} inválido`);
+      return;
+    }
+
+    const startFare = Number(rawCategory.startFare);
+    const extraKmRate = Number(rawCategory.extraKmRate);
+    const operationalPerMinRate = Number(rawCategory.operationalPerMinRate);
+
+    if (!Number.isFinite(startFare) || startFare < 0) {
+      validationErrors.push(`categories.${categoryKey}.startFare inválido`);
+    }
+    if (!Number.isFinite(extraKmRate) || extraKmRate < 0) {
+      validationErrors.push(`categories.${categoryKey}.extraKmRate inválido`);
+    }
+    if (!Number.isFinite(operationalPerMinRate) || operationalPerMinRate < 0) {
+      validationErrors.push(`categories.${categoryKey}.operationalPerMinRate inválido`);
+    }
+
+    normalizedCategories[categoryKey] = {
+      startFare: Number((Number.isFinite(startFare) ? startFare : 0).toFixed(2)),
+      extraKmRate: Number((Number.isFinite(extraKmRate) ? extraKmRate : 0).toFixed(2)),
+      operationalPerMinRate: Number((Number.isFinite(operationalPerMinRate) ? operationalPerMinRate : 0).toFixed(2))
+    };
+  });
+
+  if (validationErrors.length) {
+    return res.status(400).json({ error: validationErrors.join(", ") });
+  }
+
+  adminPricingConfig = {
+    ...adminPricingConfig,
+    foraneoThresholdKm: Number(foraneoThresholdKm.toFixed(2)),
+    includedKmInStartFare: Number(includedKmInStartFare.toFixed(2)),
+    foraneoMultiplier: Number(foraneoMultiplier.toFixed(2)),
+    defaultLoadingMinutes: Number(defaultLoadingMinutes.toFixed(2)),
+    defaultTransferMinutes: Number(defaultTransferMinutes.toFixed(2)),
+    defaultUnloadingMinutes: Number(defaultUnloadingMinutes.toFixed(2)),
+    loadPersonnelUnitCost: Number(loadPersonnelUnitCost.toFixed(2)),
+    unloadPersonnelUnitCost: Number(unloadPersonnelUnitCost.toFixed(2)),
+    categories: normalizedCategories
+  };
+
+  adminPricingConfig = applyAdminPricingConfig(adminPricingConfig);
+  adminPricingConfig = saveAdminPricingConfig(adminPricingConfig);
+
+  return res.json({
+    ok: true,
+    config: {
+      ...adminPricingConfig,
+      categories: { ...adminPricingConfig.categories },
       municipalities: [...tripRules.municipalities]
     }
   });
@@ -407,14 +764,26 @@ app.get("/api/quote", (req, res) => {
   const inferredRouteType = resolveRouteType(pickup, dropoff, distance);
   const routeType = String(req.query.routeType || inferredRouteType);
   const service = String(req.query.service || getServiceKeyByRouteType(category, routeType));
-  const waitMinutes = Number(req.query.waitMinutes || 0);
+  const loadingMinutes = Math.max(0, Number(req.query.loadingMinutes ?? adminPricingConfig.defaultLoadingMinutes) || 0);
+  const transferMinutes = Math.max(0, Number(req.query.transferMinutes ?? adminPricingConfig.defaultTransferMinutes) || 0);
+  const unloadingMinutes = Math.max(0, Number(req.query.unloadingMinutes ?? adminPricingConfig.defaultUnloadingMinutes) || 0);
+  const hasWaitOverride = req.query.waitMinutes !== undefined && String(req.query.waitMinutes).trim() !== "";
+  const operationalMinutes = hasWaitOverride
+    ? Math.max(0, Number(req.query.waitMinutes) || 0)
+    : Number((loadingMinutes + transferMinutes + unloadingMinutes).toFixed(2));
+  const loadPersonnelCount = Math.max(0, Number(req.query.loadPersonnelCount || 0) || 0);
+  const unloadPersonnelCount = Math.max(0, Number(req.query.unloadPersonnelCount || 0) || 0);
+  const personnelSurcharge = Number((
+    loadPersonnelCount * adminPricingConfig.loadPersonnelUnitCost +
+    unloadPersonnelCount * adminPricingConfig.unloadPersonnelUnitCost
+  ).toFixed(2));
 
   const services = serviceCatalog[category];
   if (!services || !services[service]) {
     return res.status(400).json({ error: "Categoría o servicio inválido" });
   }
 
-  const fareEstimate = estimateFare(distance, category, service, waitMinutes, routeType);
+  const fareEstimate = estimateFare(distance, category, service, operationalMinutes, routeType, personnelSurcharge);
   const rateCard = categoryRateCard[category] || categoryRateCard.pickup_mini;
   const includedKm = Math.max(0, Number(tripRules.includedKmInStartFare) || 0);
   const billableDistance = Math.max(0, distance - includedKm);
@@ -429,7 +798,16 @@ app.get("/api/quote", (req, res) => {
     distance,
     billableDistance,
     includedKmInStartFare: includedKm,
-    waitMinutes,
+    waitMinutes: operationalMinutes,
+    loadingMinutes,
+    transferMinutes,
+    unloadingMinutes,
+    operationalMinutes,
+    loadPersonnelCount,
+    unloadPersonnelCount,
+    loadPersonnelUnitCost: adminPricingConfig.loadPersonnelUnitCost,
+    unloadPersonnelUnitCost: adminPricingConfig.unloadPersonnelUnitCost,
+    personnelSurcharge,
     fareEstimate,
     startFare: rateCard.startFare,
     perKmRate: rateCard.perKm,
@@ -549,6 +927,86 @@ app.post("/api/rides/:id/cancel", (req, res) => {
   return res.json(serializeRide(ride));
 });
 
+app.get("/api/driver/rides", (req, res) => {
+  const driverId = String(req.query.driverId || "").trim();
+  const activeOnly = String(req.query.active || "") === "1";
+  const activeStatuses = new Set(["searching", "accepted", "driver_arriving", "in_progress"]);
+
+  const list = [...rides.values()]
+    .filter((ride) => {
+      if (driverId && ride.driver?.id !== driverId) {
+        return false;
+      }
+
+      if (activeOnly && !activeStatuses.has(ride.status)) {
+        return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
+    .map(serializeRide);
+
+  return res.json(list);
+});
+
+app.post("/api/driver/rides/:id/status", (req, res) => {
+  const ride = rides.get(req.params.id);
+  const status = String(req.body?.status || "").trim();
+  const allowed = new Set(["driver_arriving", "in_progress", "completed", "cancelled"]);
+
+  if (!ride) {
+    return res.status(404).json({ error: "Solicitud de carga no encontrada" });
+  }
+
+  if (!allowed.has(status)) {
+    return res.status(400).json({ error: "status inválido" });
+  }
+
+  if (["completed", "cancelled"].includes(ride.status)) {
+    return res.status(409).json({ error: "No se puede actualizar en este estado" });
+  }
+
+  ride.status = status;
+  if (status === "driver_arriving") {
+    ride.progress = Math.max(ride.progress, 0.18);
+    appendTimeline(ride, "Conductor en camino");
+  }
+
+  if (status === "in_progress") {
+    ride.progress = Math.max(ride.progress, 0.55);
+    appendTimeline(ride, "Carga iniciada por conductor");
+  }
+
+  if (status === "completed") {
+    ride.progress = 1;
+    ride.etaMin = 0;
+    appendTimeline(ride, "Entrega completada por conductor");
+    if (ride.driver) {
+      const driver = drivers.find((item) => item.id === ride.driver.id);
+      if (driver) {
+        driver.available = true;
+        driver.completedRides += 1;
+      }
+    }
+  }
+
+  if (status === "cancelled") {
+    ride.progress = 0;
+    appendTimeline(ride, "Viaje cancelado por conductor");
+    if (ride.driver) {
+      const driver = drivers.find((item) => item.id === ride.driver.id);
+      if (driver) {
+        driver.available = true;
+      }
+    }
+  }
+
+  broadcastRide(ride);
+  broadcastDrivers();
+  return res.json(serializeRide(ride));
+});
+
 // Broadcast de conductores cada 2.5 segundos
 setInterval(() => {
   drivers.forEach((d) => {
@@ -571,10 +1029,35 @@ io.on("connection", (socket) => {
   });
 });
 
+app.get(/^\/(?!api\/).*/, (req, res, next) => {
+  if (req.path.startsWith("/socket.io") || req.path.startsWith("/logo")) {
+    return next();
+  }
+
+  if (!hasFlutterWebBuild) {
+    return res.status(503).send(
+      [
+        "Frontend Flutter no encontrado.",
+        "Ejecuta en la raiz del proyecto:",
+        "cd flutter_app",
+        "flutter pub get",
+        "flutter build web"
+      ].join("\n")
+    );
+  }
+
+  return res.sendFile(FLUTTER_WEB_INDEX);
+});
+
 server.listen(PORT, () => {
-  console.log(`KARRIT Platform running on http://localhost:${PORT}`);
+  console.log(`Karryt Platform running on http://localhost:${PORT}`);
+  console.log(`Frontend activo: ${hasFlutterWebBuild ? "Flutter Web" : "No compilado"}`);
+  if (!hasFlutterWebBuild) {
+    console.log("Compila Flutter Web con: cd flutter_app && flutter build web");
+  }
   console.log(`\nCategorías disponibles:`);
   Object.values(vehicleCategories).forEach(cat => {
     console.log(`  - ${cat.label}: ${cat.capacity}`);
   });
 });
+

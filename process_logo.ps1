@@ -1,6 +1,6 @@
 ﻿Add-Type -AssemblyName System.Drawing
-$srcPath = "C:\Proyectos\Proyecto KARRIT\logo\BCO.f93f9b13-2cd3-4507-a89b-db3f375bd371.png"
-$outPath = "C:\Proyectos\Proyecto KARRIT\public\logo-karryt-silver-clean.png"
+$srcPath = "C:\Proyectos\Proyecto Karryt\logo\BCO.f93f9b13-2cd3-4507-a89b-db3f375bd371.png"
+$outPath = "C:\Proyectos\Proyecto Karryt\public\logo-karryt-silver-clean.png"
 
 $src = New-Object System.Drawing.Bitmap($srcPath)
 $wFull = $src.Width
@@ -78,3 +78,4 @@ Write-Host "Final: $($cropW)x$cropH"
 Write-Host "Ok: $outPath"
 
 $final.Dispose(); $roi.Dispose(); $src.Dispose()
+

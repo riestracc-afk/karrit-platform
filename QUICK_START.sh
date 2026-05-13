@@ -1,8 +1,8 @@
-#!/bin/bash
-# KARRIT Platform - Quick Setup Script
+﻿#!/bin/bash
+# Karryt Platform - Quick Setup Script
 # Este script te guía a través de la configuración en orden
 
-echo "🚀 KARRIT Platform - Firebase + GitHub Setup"
+echo "🚀 Karryt Platform - Firebase + GitHub Setup"
 echo "=============================================="
 echo ""
 
@@ -19,7 +19,7 @@ echo ""
 echo "1️⃣  Crear proyecto Firebase:"
 echo "   👉 https://console.firebase.google.com"
 echo "   • Nuevo Proyecto"
-echo "   • Nombre: karrit-platform"
+echo "   • Nombre: Karryt-platform"
 echo "   • Crear"
 echo ""
 
@@ -32,14 +32,14 @@ echo ""
 
 echo "3️⃣  Crear repositorio en GitHub:"
 echo "   👉 https://github.com/new"
-echo "   • Repository name: karrit-platform"
-echo "   • Description: KARRIT - Plataforma de conexión para transporte de carga"
+echo "   • Repository name: Karryt-platform"
+echo "   • Description: Karryt - Plataforma de conexión para transporte de carga"
 echo "   • Public"
 echo "   • Crear"
 echo ""
 
 echo "4️⃣  Conectar Git (ejecutar en PowerShell):"
-echo "   git remote add origin https://github.com/TU_USUARIO/karrit-platform.git"
+echo "   git remote add origin https://github.com/TU_USUARIO/Karryt-platform.git"
 echo "   git push -u origin main"
 echo ""
 
@@ -56,6 +56,7 @@ echo "   • Abrir .env"
 echo "   • Llenar con datos del JSON"
 echo ""
 
-echo "🎉 Después, tu app estará en: https://karrit-platform.web.app"
+echo "🎉 Después, tu app estará en: https://Karryt-platform.web.app"
 echo ""
 echo "¿Necesitas ayuda? Pregunta en GitHub Issues o aquí mismo."
+

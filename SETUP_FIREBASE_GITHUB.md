@@ -1,10 +1,10 @@
-# 🚀 Setup: Firebase + GitHub para KARRIT
+﻿# 🚀 Setup: Firebase + GitHub para Karryt
 
 ## Paso 1: Crear Proyecto en Firebase Console
 
 1. Abre https://console.firebase.google.com
 2. Haz clic en **"Añadir Proyecto"**
-3. Nombre: `karrit-platform`
+3. Nombre: `Karryt-platform`
 4. Acepta los términos y crea el proyecto
 5. Espera a que se inicialice (2-3 minutos)
 
@@ -22,8 +22,8 @@
 ## Paso 3: Crear Repositorio en GitHub
 
 1. Abre https://github.com/new
-2. **Repository name:** `karrit-platform`
-3. **Description:** "KARRIT - Plataforma de conexión para transporte de carga"
+2. **Repository name:** `Karryt-platform`
+3. **Description:** "Karryt - Plataforma de conexión para transporte de carga"
 4. **Public** (para GitHub Pages/Actions)
 5. No inicialices con README (ya tienes uno)
 6. Crea el repositorio
@@ -33,16 +33,16 @@
 ## Paso 4: Configurar Git Localmente
 
 ```bash
-cd "c:\Proyectos\Proyecto KARRIT"
+cd "c:\Proyectos\Proyecto Karryt"
 
 # Inicializar repositorio
 git init
 git branch -M main
 git add .
-git commit -m "Initial commit: KARRIT platform with Firebase setup"
+git commit -m "Initial commit: Karryt platform with Firebase setup"
 
 # Agregar remoto (reemplaza TU_USUARIO)
-git remote add origin https://github.com/TU_USUARIO/karrit-platform.git
+git remote add origin https://github.com/TU_USUARIO/Karryt-platform.git
 
 # Enviar código
 git push -u origin main
@@ -61,10 +61,10 @@ git push -u origin main
 ```json
 {
   "type": "service_account",
-  "project_id": "karrit-platform",
+  "project_id": "Karryt-platform",
   "private_key_id": "...",
   "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk@karrit-platform.iam.gserviceaccount.com",
+  "client_email": "firebase-adminsdk@Karryt-platform.iam.gserviceaccount.com",
   "client_id": "...",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
   "token_uri": "https://oauth2.googleapis.com/token",
@@ -77,12 +77,12 @@ git push -u origin main
 
 ## Paso 6: Crear archivo .env en tu máquina
 
-En `c:\Proyectos\Proyecto KARRIT`, crea un archivo `.env`:
+En `c:\Proyectos\Proyecto Karryt`, crea un archivo `.env`:
 
 ```env
-FIREBASE_PROJECT_ID=karrit-platform
+FIREBASE_PROJECT_ID=Karryt-platform
 FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n[pega aquí tu private key sin comillas]\n-----END PRIVATE KEY-----\n
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk@karrit-platform.iam.gserviceaccount.com
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk@Karryt-platform.iam.gserviceaccount.com
 NODE_ENV=development
 ```
 
@@ -107,7 +107,7 @@ npm start
 1. Después de hacer `git push`, ve a tu repositorio GitHub
 2. Haz clic en **Actions**
 3. Deberías ver el workflow ejecutándose
-4. Una vez complete, tu app estará en: `https://karrit-platform.web.app`
+4. Una vez complete, tu app estará en: `https://Karryt-platform.web.app`
 
 ---
 
@@ -121,7 +121,7 @@ npm start
 - [ ] Local: `npm install` ejecutado
 - [ ] Local: `git push` hecho
 - [ ] GitHub Actions: Deploy exitoso
-- [ ] URL: `https://karrit-platform.web.app` accesible
+- [ ] URL: `https://Karryt-platform.web.app` accesible
 
 ---
 
@@ -142,3 +142,4 @@ npm start
 ---
 
 **¿Problemas? Pregúntame y arreglamos juntos. 🚀**
+

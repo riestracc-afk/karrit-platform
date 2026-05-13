@@ -1,6 +1,6 @@
-# KARRIT - Plataforma de Conexión para Transporte de Carga
+﻿# Karryt - Plataforma de Conexión para Transporte de Carga
 
-**KARRIT** es una plataforma web que conecta clientes con conductores especializados en transporte de carga. Ofrece 4 categorías de vehículos para cubrir desde cargas ligeras hasta transporte de granel con camiones especializados.
+**Karryt** es una plataforma web que conecta clientes con conductores especializados en transporte de carga. Ofrece 4 categorías de vehículos para cubrir desde cargas ligeras hasta transporte de granel con camiones especializados.
 
 ---
 
@@ -92,7 +92,7 @@ Camiones especializados para carga a granel y materiales sueltos.
 ## 📦 Stack Tecnológico
 
 - **Backend:** Node.js + Express + Socket.io
-- **Frontend:** HTML5 + CSS3 + JavaScript Vanilla
+- **Frontend único:** Flutter + Dart + HTTP
 - **Base de datos:** En memoria (demo)
 - **Transporte:** WebSockets para actualizaciones en vivo
 
@@ -106,7 +106,7 @@ Camiones especializados para carga a granel y materiales sueltos.
 
 ### Instalación
 ```bash
-cd "c:\Proyectos\Proyecto KARRIT"
+cd "c:\Proyectos\Proyecto Karryt"
 npm install
 ```
 
@@ -120,7 +120,25 @@ npm run dev
 npm start
 ```
 
+### Construir y ejecutar frontend Flutter Web + backend
+```bash
+npm run start:flutter
+```
+
 La aplicación estará disponible en: **http://localhost:3000**
+
+### Ejecutar cliente Flutter
+```bash
+cd "c:\Proyectos\Proyecto Karryt\flutter_app"
+flutter pub get
+flutter run -d chrome
+```
+
+Si ejecutas en Android emulador y el backend está en tu PC, usa:
+
+```bash
+flutter run -d android --dart-define=API_BASE_URL=http://10.0.2.2:3000
+```
 
 ---
 
@@ -198,13 +216,13 @@ El endpoint de cotización devuelve la tarifa estimada en **MXN** y también los
 Esta plataforma fue desarrollada como demo educativa con enfoque en:
 
 ✓ **Código 100% original** - Sin clonación de competidores  
-✓ **Identidad propia** - Marca KARRIT única y diferenciada  
+✓ **Identidad propia** - Marca Karryt única y diferenciada  
 ✓ **Licencias claras** - Todas las dependencias con licencias permisivas (MIT/Apache)  
 ✓ **Preparado para GDPR** - Arquitectura lista para implementar privacidad  
 
 ---
 
-## 📝 Cambios Realizados (Transformación de Uber-clone a KARRIT)
+## 📝 Cambios Realizados (Transformación de Uber-clone a Karryt)
 
 ### Backend (server.js)
 - ✅ Reemplazo de `serviceCatalog` genérico por `vehicleCategories` especializadas
@@ -215,16 +233,14 @@ Esta plataforma fue desarrollada como demo educativa con enfoque en:
 - ✅ Tracking de entregas completadas por conductor
 - ✅ Endpoints `/api/categories` y `/api/services/:category`
 
-### Frontend (HTML/CSS/JS)
-- ✅ Rebranding visual: Paleta naranja/dorado (logística)
-- ✅ Nuevo hero: "Tu Carga, Nuestro Servicio"
-- ✅ Selector dinámico de categoría → Servicios
-- ✅ Textos contextuales: "Solicitar Carga", "Entrega", "Conductor"
-- ✅ Información enriquecida de conductor: Vehículo, entregas completadas
-- ✅ Validaciones de flujo de selección
+### Frontend (Flutter)
+- ✅ Módulo Usuario en Flutter
+- ✅ Módulo Admin en Flutter
+- ✅ Módulo Chofer en Flutter
+- ✅ Navegación unificada por roles
 
 ### Identidad
-- ✅ Cambio `package.json`: "karrit-uber-clone" → "karrit-platform"
+- ✅ Cambio `package.json`: "Karryt-uber-clone" → "Karryt-platform"
 - ✅ Descripción: "Plataforma de conexión para conductores de camionetas y camiones"
 - ✅ Logo mental: Naranja (carga, movimiento, energía)
 
@@ -248,4 +264,5 @@ MIT - Libre para uso educativo y comercial.
 
 ---
 
-**KARRIT © 2026 - Conectando movimiento con eficiencia.**
+**Karryt © 2026 - Conectando movimiento con eficiencia.**
+

@@ -1,12 +1,15 @@
-{
-  "name": "karrit-platform",
+﻿{
+  "name": "Karryt-platform",
   "version": "1.0.0",
-  "description": "KARRIT - Plataforma de conexión para conductores de camionetas y camiones de carga",
+  "description": "Karryt - Plataforma de conexión para conductores de camionetas y camiones de carga",
   "main": "server.js",
   "scripts": {
     "dev": "node --watch server.js",
+    "build:web": "cd flutter_app && flutter pub get && flutter build web",
+    "start:karryt": "powershell -ExecutionPolicy Bypass -File ./start-karryt.ps1",
+    "start:flutter": "npm run build:web && npm start",
     "start": "node server.js",
-    "deploy": "firebase deploy"
+    "deploy": "npm run build:web && firebase deploy"
   },
   "keywords": [
     "carga",
