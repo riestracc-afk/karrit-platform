@@ -20,11 +20,19 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
       - name: Install dependencies
         run: npm install
 
       - name: Lint & Test
         run: npm run test --if-present
+
+      - name: Build Flutter Web
+        run: npm run build:web
 
       - name: Deploy to Firebase
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
