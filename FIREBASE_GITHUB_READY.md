@@ -27,7 +27,8 @@
 ### **1️⃣ Crear Proyecto Firebase** (2 minutos)
 ```
 https://console.firebase.google.com → Nuevo Proyecto
-Nombre: Karryt-platform
+Nombre visible: Karryt Platform
+ID técnico del proyecto: karrit-platform
 ```
 
 ### **2️⃣ Obtener Credenciales** (1 minuto)
@@ -70,7 +71,7 @@ Llenar con datos del JSON descargado
 | Aspecto | Antes | Después |
 |--------|-------|---------|
 | Base de datos | En memoria (pierde datos) | Firestore (persistente) |
-| Hosting | localhost:3000 | `https://Karryt-platform.web.app` |
+| Hosting | localhost:3000 | `https://karrit-platform.web.app` |
 | Versionamiento | Nada | GitHub con historial completo |
 | Deploy | Manual | Automático en cada push |
 | Credenciales | En código | Variables de entorno seguras |
@@ -102,7 +103,7 @@ c:\Proyectos\Proyecto Karryt
 ## 🚀 Timeline
 
 **Hoy (10 minutos):** Creas cuentas y configuras secrets  
-**Resultado:** App en `https://Karryt-platform.web.app` funcionando con datos persistentes
+**Resultado:** App en `https://karrit-platform.web.app` funcionando con datos persistentes
 
 ---
 
