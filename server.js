@@ -14,8 +14,10 @@ const DATA_DIR = path.join(__dirname, "data");
 const FAVORITES_FILE = path.join(DATA_DIR, "address-favorites.json");
 const RECENTS_FILE = path.join(DATA_DIR, "address-recents.json");
 const ADMIN_PRICING_FILE = path.join(DATA_DIR, "admin-pricing-config.json");
-const FLUTTER_WEB_DIR = path.join(__dirname, "flutter_app", "build", "web");
+const FLUTTER_WEB_DIR = path.join(__dirname, "flutter_app", "build", "hosting");
 const FLUTTER_WEB_INDEX = path.join(FLUTTER_WEB_DIR, "index.html");
+const FLUTTER_WEB_CHOFER_INDEX = path.join(FLUTTER_WEB_DIR, "chofer", "index.html");
+const FLUTTER_WEB_ADMIN_INDEX = path.join(FLUTTER_WEB_DIR, "admin", "index.html");
 const hasFlutterWebBuild = fs.existsSync(FLUTTER_WEB_INDEX);
 
 app.use(express.json());
@@ -1044,11 +1046,17 @@ app.get(/^\/(?!api\/).*/, (req, res, next) => {
       [
         "Frontend Flutter no encontrado.",
         "Ejecuta en la raiz del proyecto:",
-        "cd flutter_app",
-        "flutter pub get",
-        "flutter build web"
+        "npm run build:web:multi"
       ].join("\n")
     );
+  }
+
+  if (req.path.startsWith("/chofer") && fs.existsSync(FLUTTER_WEB_CHOFER_INDEX)) {
+    return res.sendFile(FLUTTER_WEB_CHOFER_INDEX);
+  }
+
+  if (req.path.startsWith("/admin") && fs.existsSync(FLUTTER_WEB_ADMIN_INDEX)) {
+    return res.sendFile(FLUTTER_WEB_ADMIN_INDEX);
   }
 
   return res.sendFile(FLUTTER_WEB_INDEX);
@@ -1058,7 +1066,7 @@ server.listen(PORT, () => {
   console.log(`Karryt Platform running on http://localhost:${PORT}`);
   console.log(`Frontend activo: ${hasFlutterWebBuild ? "Flutter Web" : "No compilado"}`);
   if (!hasFlutterWebBuild) {
-    console.log("Compila Flutter Web con: cd flutter_app && flutter build web");
+    console.log("Compila Flutter Web multi-app con: npm run build:web:multi");
   }
   console.log(`\nCategorías disponibles:`);
   Object.values(vehicleCategories).forEach(cat => {

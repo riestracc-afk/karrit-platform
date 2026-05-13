@@ -83,6 +83,16 @@ Para build web por rol:
 - `npm run build:web:driver`
 - `npm run build:web:admin`
 
+Para empaquetar las 3 apps en un solo hosting compartido:
+
+- `npm run build:web:multi`
+
+Rutas de produccion esperadas:
+
+- Usuario: `/`
+- Chofer: `/chofer`
+- Admin PC: `/admin`
+
 ## Favoritos sincronizados
 
 Las direcciones favoritas se sincronizan con el backend en:

@@ -31,8 +31,8 @@ jobs:
       - name: Lint & Test
         run: npm run test --if-present
 
-      - name: Build Flutter Web
-        run: npm run build:web
+      - name: Build Flutter Web Multi-App
+        run: npm run build:web:multi
 
       - name: Deploy to Firebase
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
