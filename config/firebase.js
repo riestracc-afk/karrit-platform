@@ -11,15 +11,24 @@ const serviceAccount = {
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL
 };
 
+const hasServiceAccount = Boolean(
+  serviceAccount.projectId && serviceAccount.privateKey && serviceAccount.clientEmail
+);
+
+let db = null;
+
 try {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+  if (hasServiceAccount) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    db = admin.firestore();
+  } else {
+    console.warn('Firebase credentials are missing. Using in-memory storage.');
+  }
 } catch (error) {
   console.warn('Firebase not initialized (development mode). Using in-memory storage.');
 }
-
-const db = admin.firestore();
 
 module.exports = {
   admin,
