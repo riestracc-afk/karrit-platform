@@ -20,7 +20,7 @@ echo "1️⃣  Crear proyecto Firebase:"
 echo "   👉 https://console.firebase.google.com"
 echo "   • Nuevo Proyecto"
 echo "   • Nombre visible: Karryt Platform"
-echo "   • ID técnico: karrit-platform"
+echo "   • ID técnico: karryt-platform"
 echo "   • Crear"
 echo ""
 
@@ -57,7 +57,7 @@ echo "   • Abrir .env"
 echo "   • Llenar con datos del JSON"
 echo ""
 
-echo "🎉 Después, tu app estará en: https://karrit-platform.web.app"
+echo "🎉 Después, tu app estará en: https://karryt-platform.web.app"
 echo ""
 echo "¿Necesitas ayuda? Pregunta en GitHub Issues o aquí mismo."
 

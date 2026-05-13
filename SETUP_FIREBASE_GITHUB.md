@@ -5,7 +5,7 @@
 1. Abre https://console.firebase.google.com
 2. Haz clic en **"Añadir Proyecto"**
 3. Nombre visible: `Karryt Platform`
-4. ID técnico del proyecto: `karrit-platform`
+4. ID técnico del proyecto: `karryt-platform`
 5. Acepta los términos y crea el proyecto
 6. Espera a que se inicialice (2-3 minutos)
 
@@ -62,10 +62,10 @@ git push -u origin main
 ```json
 {
   "type": "service_account",
-  "project_id": "karrit-platform",
+  "project_id": "karryt-platform",
   "private_key_id": "...",
   "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk@karrit-platform.iam.gserviceaccount.com",
+  "client_email": "firebase-adminsdk@karryt-platform.iam.gserviceaccount.com",
   "client_id": "...",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
   "token_uri": "https://oauth2.googleapis.com/token",
@@ -81,9 +81,9 @@ git push -u origin main
 En `c:\Proyectos\Proyecto Karryt`, crea un archivo `.env`:
 
 ```env
-FIREBASE_PROJECT_ID=karrit-platform
+FIREBASE_PROJECT_ID=karryt-platform
 FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n[pega aquí tu private key sin comillas]\n-----END PRIVATE KEY-----\n
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk@karrit-platform.iam.gserviceaccount.com
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk@karryt-platform.iam.gserviceaccount.com
 NODE_ENV=development
 ```
 
@@ -108,7 +108,7 @@ npm start
 1. Después de hacer `git push`, ve a tu repositorio GitHub
 2. Haz clic en **Actions**
 3. Deberías ver el workflow ejecutándose
-4. Una vez complete, tu app estará en: `https://karrit-platform.web.app`
+4. Una vez complete, tu app estará en: `https://karryt-platform.web.app`
 
 ---
 
@@ -122,7 +122,7 @@ npm start
 - [ ] Local: `npm install` ejecutado
 - [ ] Local: `git push` hecho
 - [ ] GitHub Actions: Deploy exitoso
-- [ ] URL: `https://karrit-platform.web.app` accesible
+- [ ] URL: `https://karryt-platform.web.app` accesible
 
 ---
 
