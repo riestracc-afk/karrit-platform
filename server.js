@@ -953,7 +953,7 @@ app.get("/api/driver/rides", (req, res) => {
 app.post("/api/driver/rides/:id/status", (req, res) => {
   const ride = rides.get(req.params.id);
   const status = String(req.body?.status || "").trim();
-  const allowed = new Set(["driver_arriving", "in_progress", "completed", "cancelled"]);
+  const allowed = new Set(["accepted", "driver_arriving", "in_progress", "completed", "cancelled"]);
 
   if (!ride) {
     return res.status(404).json({ error: "Solicitud de carga no encontrada" });
@@ -968,6 +968,11 @@ app.post("/api/driver/rides/:id/status", (req, res) => {
   }
 
   ride.status = status;
+  if (status === "accepted") {
+    ride.progress = Math.max(ride.progress, 0.08);
+    appendTimeline(ride, "Conductor acepto el viaje");
+  }
+
   if (status === "driver_arriving") {
     ride.progress = Math.max(ride.progress, 0.18);
     appendTimeline(ride, "Conductor en camino");

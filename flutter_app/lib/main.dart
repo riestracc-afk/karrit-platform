@@ -27,13 +27,13 @@ class KarrytFlutterApp extends StatelessWidget {
     const seed = Color(0xFF0F4CFF);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Karryt Flutter',
+      title: 'Karryt Usuario',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: seed),
         scaffoldBackgroundColor: const Color(0xFFF3F6FB),
       ),
-      home: const WorkspaceShell(),
+      home: const RideScreen(),
     );
   }
 }
@@ -1231,8 +1231,10 @@ class _AdminScreenState extends State<AdminScreen> {
   };
 
   final Map<String, Map<String, TextEditingController>> _categoryFields = {};
+  List<RideData> _rides = [];
 
   bool _loading = true;
+  bool _loadingRides = false;
   bool _saving = false;
   String? _error;
   String? _success;
@@ -1289,12 +1291,44 @@ class _AdminScreenState extends State<AdminScreen> {
         map['extraKmRate']!.text = entry.value.extraKmRate.toStringAsFixed(2);
         map['operationalPerMinRate']!.text = entry.value.operationalPerMinRate.toStringAsFixed(2);
       }
+
+      await _loadRides();
     } catch (e) {
       _error = 'No se pudo cargar configuracion: $e';
     } finally {
       if (mounted) {
         setState(() {
           _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadRides() async {
+    setState(() {
+      _loadingRides = true;
+    });
+
+    try {
+      final rides = await _apiClient.getDriverRides(activeOnly: false);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _rides = rides;
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = 'No se pudo cargar monitoreo de viajes: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingRides = false;
         });
       }
     }
@@ -1363,7 +1397,7 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Consola Admin Flutter')),
+      appBar: AppBar(title: const Text('Consola Admin Karryt (PC)')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -1379,6 +1413,8 @@ class _AdminScreenState extends State<AdminScreen> {
                     Text(_success!, style: TextStyle(color: Colors.green.shade700)),
                     const SizedBox(height: 8),
                   ],
+                  _buildMonitoringCard(),
+                  const SizedBox(height: 12),
                   _buildGeneralCard(),
                   const SizedBox(height: 12),
                   ..._categoryFields.keys.map(_buildCategoryCard),
@@ -1418,6 +1454,61 @@ class _AdminScreenState extends State<AdminScreen> {
                 labelText: 'Municipios (separados por coma)',
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonitoringCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Monitoreo de viajes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                ),
+                IconButton(
+                  onPressed: _loadingRides ? null : _loadRides,
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Actualizar viajes',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_loadingRides)
+              const LinearProgressIndicator()
+            else if (_rides.isEmpty)
+              const Text('Sin viajes registrados por ahora.')
+            else
+              ..._rides.take(20).map(
+                (ride) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE3E8F2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Viaje ${ride.id}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 4),
+                        Text('Estado: ${statusToLabel(ride.status)}'),
+                        Text('Chofer: ${ride.driver?.name ?? 'Sin asignar'}'),
+                        Text('Origen: ${ride.pickup}'),
+                        Text('Destino: ${ride.dropoff}'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -1690,6 +1781,11 @@ class _DriverScreenState extends State<DriverScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
+                if (ride.status == 'searching')
+                  FilledButton.tonal(
+                    onPressed: () => _setRideStatus(ride, 'accepted'),
+                    child: const Text('Aceptar viaje'),
+                  ),
                 OutlinedButton(
                   onPressed: () => _setRideStatus(ride, 'driver_arriving'),
                   child: const Text('En camino'),

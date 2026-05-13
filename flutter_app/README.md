@@ -63,6 +63,26 @@ Dentro del modulo Usuario se mantiene la barra inferior interna para:
 
 La barra interna de Usuario se sincroniza automaticamente con la seccion visible mientras desplazas la pantalla.
 
+## Apps independientes por rol
+
+Ahora cada rol tiene su punto de entrada propio, compartiendo la misma API y base de datos:
+
+- Usuario: `lib/main_user.dart`
+- Chofer: `lib/main_driver.dart`
+- Admin (PC): `lib/main_admin.dart`
+
+Desde la raiz del proyecto:
+
+- `npm run run:user`
+- `npm run run:driver`
+- `npm run run:admin`
+
+Para build web por rol:
+
+- `npm run build:web:user`
+- `npm run build:web:driver`
+- `npm run build:web:admin`
+
 ## Favoritos sincronizados
 
 Las direcciones favoritas se sincronizan con el backend en:
