@@ -109,6 +109,7 @@ class RideData {
     required this.etaMin,
     required this.driver,
     required this.requestedAt,
+    required this.scheduledAt,
   });
 
   final String id;
@@ -125,6 +126,7 @@ class RideData {
   final int? etaMin;
   final RideDriver? driver;
   final String requestedAt;
+  final String? scheduledAt;
 
   factory RideData.fromJson(Map<String, dynamic> json) {
     final timelineRaw = json['timeline'] as List<dynamic>? ?? [];
@@ -145,7 +147,8 @@ class RideData {
           .map(TimelineEvent.fromJson)
           .toList(),
       etaMin: (json['etaMin'] as num?)?.toInt(),
-        requestedAt: json['requestedAt'] as String? ?? '',
+      requestedAt: json['requestedAt'] as String? ?? '',
+      scheduledAt: json['scheduledAt'] as String?,
       driver: json['driver'] is Map<String, dynamic>
           ? RideDriver.fromJson(json['driver'] as Map<String, dynamic>)
           : null,
@@ -234,7 +237,8 @@ class AdminCategoryConfig {
     return AdminCategoryConfig(
       startFare: (json['startFare'] as num?)?.toDouble() ?? 0,
       extraKmRate: (json['extraKmRate'] as num?)?.toDouble() ?? 0,
-      operationalPerMinRate: (json['operationalPerMinRate'] as num?)?.toDouble() ?? 0,
+      operationalPerMinRate:
+          (json['operationalPerMinRate'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -273,25 +277,36 @@ class AdminPricingConfig {
   final List<String> municipalities;
 
   factory AdminPricingConfig.fromJson(Map<String, dynamic> json) {
-    final categoriesRaw = json['categories'] as Map<String, dynamic>? ?? const {};
-    final municipalitiesRaw = json['municipalities'] as List<dynamic>? ?? const [];
+    final categoriesRaw =
+        json['categories'] as Map<String, dynamic>? ?? const {};
+    final municipalitiesRaw =
+        json['municipalities'] as List<dynamic>? ?? const [];
 
     return AdminPricingConfig(
       foraneoThresholdKm: (json['foraneoThresholdKm'] as num?)?.toDouble() ?? 0,
-      includedKmInStartFare: (json['includedKmInStartFare'] as num?)?.toDouble() ?? 0,
+      includedKmInStartFare:
+          (json['includedKmInStartFare'] as num?)?.toDouble() ?? 0,
       foraneoMultiplier: (json['foraneoMultiplier'] as num?)?.toDouble() ?? 1,
-      defaultLoadingMinutes: (json['defaultLoadingMinutes'] as num?)?.toDouble() ?? 0,
-      defaultTransferMinutes: (json['defaultTransferMinutes'] as num?)?.toDouble() ?? 0,
-      defaultUnloadingMinutes: (json['defaultUnloadingMinutes'] as num?)?.toDouble() ?? 0,
-      loadPersonnelUnitCost: (json['loadPersonnelUnitCost'] as num?)?.toDouble() ?? 0,
-      unloadPersonnelUnitCost: (json['unloadPersonnelUnitCost'] as num?)?.toDouble() ?? 0,
+      defaultLoadingMinutes:
+          (json['defaultLoadingMinutes'] as num?)?.toDouble() ?? 0,
+      defaultTransferMinutes:
+          (json['defaultTransferMinutes'] as num?)?.toDouble() ?? 0,
+      defaultUnloadingMinutes:
+          (json['defaultUnloadingMinutes'] as num?)?.toDouble() ?? 0,
+      loadPersonnelUnitCost:
+          (json['loadPersonnelUnitCost'] as num?)?.toDouble() ?? 0,
+      unloadPersonnelUnitCost:
+          (json['unloadPersonnelUnitCost'] as num?)?.toDouble() ?? 0,
       categories: categoriesRaw.map(
         (key, value) => MapEntry(
           key,
           AdminCategoryConfig.fromJson(value as Map<String, dynamic>),
         ),
       ),
-      municipalities: municipalitiesRaw.map((e) => '$e').where((e) => e.trim().isNotEmpty).toList(),
+      municipalities: municipalitiesRaw
+          .map((e) => '$e')
+          .where((e) => e.trim().isNotEmpty)
+          .toList(),
     );
   }
 
@@ -305,7 +320,8 @@ class AdminPricingConfig {
       'defaultUnloadingMinutes': defaultUnloadingMinutes,
       'loadPersonnelUnitCost': loadPersonnelUnitCost,
       'unloadPersonnelUnitCost': unloadPersonnelUnitCost,
-      'categories': categories.map((key, value) => MapEntry(key, value.toJson())),
+      'categories':
+          categories.map((key, value) => MapEntry(key, value.toJson())),
       'municipalities': municipalities,
     };
   }

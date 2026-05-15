@@ -10,6 +10,9 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
+const DEFAULT_SCHEDULED_VISIBILITY_WINDOW_HOURS = Number.isFinite(Number(process.env.SCHEDULED_VISIBILITY_WINDOW_HOURS))
+  ? Math.max(1, Number(process.env.SCHEDULED_VISIBILITY_WINDOW_HOURS))
+  : 24;
 const DATA_DIR = path.join(__dirname, "data");
 const FAVORITES_FILE = path.join(DATA_DIR, "address-favorites.json");
 const RECENTS_FILE = path.join(DATA_DIR, "address-recents.json");
@@ -455,6 +458,7 @@ function serializeRide(ride) {
     routeType: ride.routeType,
     status: ride.status,
     requestedAt: ride.requestedAt,
+    scheduledAt: ride.scheduledAt || null,
     fareEstimate: ride.fareEstimate,
     tripDistanceKm: ride.tripDistanceKm,
     etaMin: ride.etaMin,
@@ -819,12 +823,29 @@ app.get("/api/quote", (req, res) => {
 });
 
 app.post("/api/rides", (req, res) => {
-  const { pickup, dropoff, category, service, pickupPoint, distance } = req.body || {};
+  const { pickup, dropoff, category, service, pickupPoint, distance, scheduledAt } = req.body || {};
   const requestedDistance = Math.max(0, Number(distance) || 0);
   const tripDistanceKm = requestedDistance || randomTripDistance();
   const inferredRouteType = resolveRouteType(pickup, dropoff, tripDistanceKm);
   const inferredService = getServiceKeyByRouteType(category, inferredRouteType);
   const effectiveService = serviceCatalog[category] && serviceCatalog[category][inferredService] ? inferredService : service;
+  const normalizedPickupPoint = pickupPoint && Number.isFinite(Number(pickupPoint.lat)) && Number.isFinite(Number(pickupPoint.lng))
+    ? { lat: Number(pickupPoint.lat), lng: Number(pickupPoint.lng) }
+    : cityCenter;
+
+  let normalizedScheduledAt = null;
+  if (scheduledAt !== undefined && String(scheduledAt).trim() !== "") {
+    const parsed = new Date(String(scheduledAt));
+    if (Number.isNaN(parsed.getTime())) {
+      return res.status(400).json({ error: "scheduledAt inválido. Usa formato ISO8601" });
+    }
+
+    if (parsed.getTime() <= Date.now()) {
+      return res.status(400).json({ error: "scheduledAt debe ser una fecha futura" });
+    }
+
+    normalizedScheduledAt = parsed.toISOString();
+  }
 
   if (!pickup || !dropoff || !serviceCatalog[category] || !serviceCatalog[category][effectiveService]) {
     return res.status(400).json({
@@ -840,54 +861,27 @@ app.post("/api/rides", (req, res) => {
     service: effectiveService,
     routeType: inferredRouteType,
     requestedAt: new Date().toISOString(),
-    status: "searching",
+    scheduledAt: normalizedScheduledAt,
+    status: normalizedScheduledAt ? "scheduled" : "searching",
     tripDistanceKm,
     fareEstimate: 0,
     etaMin: null,
     driver: null,
+    pickupPoint: normalizedPickupPoint,
     timeline: [],
     progress: 0
   };
 
   ride.fareEstimate = estimateFare(ride.tripDistanceKm, ride.category, ride.service, 0, ride.routeType);
-  appendTimeline(ride, "Buscando conductor en tu categoría");
+  appendTimeline(
+    ride,
+    normalizedScheduledAt
+      ? `Viaje programado para ${new Date(normalizedScheduledAt).toLocaleString("es-MX")}`
+      : "Buscando conductor en tu categoría"
+  );
 
   rides.set(ride.id, ride);
   broadcastRide(ride);
-
-  setTimeout(() => {
-    const current = rides.get(ride.id);
-    if (!current || current.status !== "searching") {
-      return;
-    }
-
-    const pickupGeo = pickupPoint || cityCenter;
-    const selected = findBestDriver(pickupGeo, category);
-
-    if (!selected) {
-      current.status = "no_drivers";
-      appendTimeline(current, "No hay conductores disponibles en esta categoría");
-      broadcastRide(current);
-      return;
-    }
-
-    selected.available = false;
-    current.status = "accepted";
-    current.progress = 0.07;
-    current.driver = {
-      id: selected.id,
-      name: selected.name,
-      rating: selected.rating,
-      vehicle: selected.vehicle,
-      completedRides: selected.completedRides
-    };
-    current.etaMin = etaMinutes(selected, pickupGeo);
-    appendTimeline(current, `Conductor asignado: ${selected.name} en ${selected.vehicle.name}`);
-
-    broadcastRide(current);
-    broadcastDrivers();
-    progressRideLifecycle(current);
-  }, 3200);
 
   return res.status(201).json(serializeRide(ride));
 });
@@ -932,12 +926,40 @@ app.post("/api/rides/:id/cancel", (req, res) => {
 app.get("/api/driver/rides", (req, res) => {
   const driverId = String(req.query.driverId || "").trim();
   const activeOnly = String(req.query.active || "") === "1";
-  const activeStatuses = new Set(["searching", "accepted", "driver_arriving", "in_progress"]);
+  const requestedWindowHours = Number(req.query.scheduledWindowHours);
+  const scheduledWindowHours = Number.isFinite(requestedWindowHours)
+    ? Math.max(1, requestedWindowHours)
+    : DEFAULT_SCHEDULED_VISIBILITY_WINDOW_HOURS;
+  const nowMs = Date.now();
+  const scheduledWindowEndMs = nowMs + scheduledWindowHours * 60 * 60 * 1000;
+  const activeStatuses = new Set(["scheduled", "searching", "accepted", "driver_arriving", "in_progress"]);
+  const selectedDriver = driverId ? drivers.find((item) => item.id === driverId) : null;
 
   const list = [...rides.values()]
     .filter((ride) => {
-      if (driverId && ride.driver?.id !== driverId) {
-        return false;
+      if (ride.status === "scheduled") {
+        const scheduledMs = new Date(ride.scheduledAt || "").getTime();
+        const isWithinWindow = Number.isFinite(scheduledMs) && scheduledMs >= nowMs && scheduledMs <= scheduledWindowEndMs;
+        if (!isWithinWindow) {
+          return false;
+        }
+      }
+
+      if (driverId) {
+        if (ride.driver?.id && ride.driver.id !== driverId) {
+          return false;
+        }
+
+        if (!ride.driver?.id) {
+          if (!selectedDriver) {
+            return false;
+          }
+
+          const isOffer = ride.status === "searching" || ride.status === "scheduled";
+          if (!isOffer || ride.category !== selectedDriver.category) {
+            return false;
+          }
+        }
       }
 
       if (activeOnly && !activeStatuses.has(ride.status)) {
@@ -946,7 +968,11 @@ app.get("/api/driver/rides", (req, res) => {
 
       return true;
     })
-    .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
+    .sort((a, b) => {
+      const aTime = new Date(a.scheduledAt || a.requestedAt).getTime();
+      const bTime = new Date(b.scheduledAt || b.requestedAt).getTime();
+      return bTime - aTime;
+    })
     .map(serializeRide);
 
   return res.json(list);
@@ -955,6 +981,7 @@ app.get("/api/driver/rides", (req, res) => {
 app.post("/api/driver/rides/:id/status", (req, res) => {
   const ride = rides.get(req.params.id);
   const status = String(req.body?.status || "").trim();
+  const driverId = String(req.body?.driverId || "").trim();
   const allowed = new Set(["accepted", "driver_arriving", "in_progress", "completed", "cancelled"]);
 
   if (!ride) {
@@ -965,14 +992,58 @@ app.post("/api/driver/rides/:id/status", (req, res) => {
     return res.status(400).json({ error: "status inválido" });
   }
 
+  if (!driverId) {
+    return res.status(400).json({ error: "driverId es requerido" });
+  }
+
   if (["completed", "cancelled"].includes(ride.status)) {
     return res.status(409).json({ error: "No se puede actualizar en este estado" });
+  }
+
+  if (status === "accepted") {
+    const selectedDriver = drivers.find((item) => item.id === driverId);
+
+    if (!selectedDriver) {
+      return res.status(400).json({ error: "Debes enviar driverId válido para aceptar el viaje" });
+    }
+
+    if (ride.driver?.id && ride.driver.id !== driverId) {
+      return res.status(409).json({ error: "Este viaje ya fue aceptado por otro conductor" });
+    }
+
+    if (!ride.driver?.id && !selectedDriver.available) {
+      return res.status(409).json({ error: "El conductor no está disponible" });
+    }
+
+    if (!ride.driver?.id && selectedDriver.category !== ride.category) {
+      return res.status(409).json({ error: "La categoría del conductor no coincide con el viaje" });
+    }
+
+    if (!ride.driver?.id) {
+      selectedDriver.available = false;
+      ride.driver = {
+        id: selectedDriver.id,
+        name: selectedDriver.name,
+        rating: selectedDriver.rating,
+        vehicle: selectedDriver.vehicle,
+        completedRides: selectedDriver.completedRides
+      };
+      ride.etaMin = etaMinutes(selectedDriver, ride.pickupPoint || cityCenter);
+    }
+  }
+
+  if ((status === "driver_arriving" || status === "in_progress" || status === "completed") && !ride.driver?.id) {
+    return res.status(409).json({ error: "Debes aceptar el viaje antes de avanzar su estado" });
+  }
+
+  if (ride.driver?.id && driverId && ride.driver.id !== driverId) {
+    return res.status(409).json({ error: "Solo el chofer asignado puede actualizar este viaje" });
   }
 
   ride.status = status;
   if (status === "accepted") {
     ride.progress = Math.max(ride.progress, 0.08);
-    appendTimeline(ride, "Conductor acepto el viaje");
+    appendTimeline(ride, `Conductor acepto el viaje${ride.driver?.name ? `: ${ride.driver.name}` : ""}`);
   }
 
   if (status === "driver_arriving") {

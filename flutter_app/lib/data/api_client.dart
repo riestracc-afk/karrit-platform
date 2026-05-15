@@ -24,21 +24,25 @@ class ApiClient {
     final response = await http.get(_uri('/api/categories'));
     _throwOnError(response);
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    return data.map((k, v) => MapEntry(k, VehicleCategory.fromJson(v as Map<String, dynamic>)));
+    return data.map((k, v) =>
+        MapEntry(k, VehicleCategory.fromJson(v as Map<String, dynamic>)));
   }
 
   Future<Map<String, ServiceItem>> getServices(String category) async {
     final response = await http.get(_uri('/api/services/$category'));
     _throwOnError(response);
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    return data.map((k, v) => MapEntry(k, ServiceItem.fromJson(v as Map<String, dynamic>)));
+    return data.map(
+        (k, v) => MapEntry(k, ServiceItem.fromJson(v as Map<String, dynamic>)));
   }
 
   Future<List<PricingRow>> getPricing() async {
     final response = await http.get(_uri('/api/pricing'));
     _throwOnError(response);
     final data = jsonDecode(response.body) as List<dynamic>;
-    return data.map((e) => PricingRow.fromJson(e as Map<String, dynamic>)).toList();
+    return data
+        .map((e) => PricingRow.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<QuoteResult> getQuote({
@@ -58,7 +62,8 @@ class ApiClient {
       }),
     );
     _throwOnError(response);
-    return QuoteResult.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return QuoteResult.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<RideData> createRide({
@@ -69,6 +74,7 @@ class ApiClient {
     required double distance,
     double? pickupLat,
     double? pickupLng,
+    String? scheduledAt,
   }) async {
     final payload = {
       'pickup': pickup,
@@ -76,6 +82,8 @@ class ApiClient {
       'category': category,
       'service': service,
       'distance': distance,
+      if (scheduledAt != null && scheduledAt.trim().isNotEmpty)
+        'scheduledAt': scheduledAt,
       'pickupPoint': {
         'lat': pickupLat ?? 40.4168,
         'lng': pickupLng ?? -3.7038,
@@ -106,10 +114,12 @@ class ApiClient {
   Future<AdminPricingConfig> getAdminPricingConfig() async {
     final response = await http.get(_uri('/api/admin/pricing-config'));
     _throwOnError(response);
-    return AdminPricingConfig.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return AdminPricingConfig.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  Future<AdminPricingConfig> saveAdminPricingConfig(AdminPricingConfig config) async {
+  Future<AdminPricingConfig> saveAdminPricingConfig(
+      AdminPricingConfig config) async {
     final response = await http.put(
       _uri('/api/admin/pricing-config'),
       headers: {'Content-Type': 'application/json'},
@@ -124,35 +134,52 @@ class ApiClient {
     final response = await http.get(_uri('/api/drivers'));
     _throwOnError(response);
     final data = jsonDecode(response.body) as List<dynamic>;
-    return data.map((e) => DriverDetail.fromJson(e as Map<String, dynamic>)).toList();
+    return data
+        .map((e) => DriverDetail.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  Future<List<RideData>> getDriverRides({String? driverId, bool activeOnly = false}) async {
+  Future<List<RideData>> getDriverRides({
+    String? driverId,
+    bool activeOnly = false,
+    int? scheduledWindowHours,
+  }) async {
     final query = <String, String>{
       if (driverId != null && driverId.isNotEmpty) 'driverId': driverId,
       if (activeOnly) 'active': '1',
+      if (scheduledWindowHours != null && scheduledWindowHours > 0)
+        'scheduledWindowHours': '$scheduledWindowHours',
     };
     final response = await http.get(_uri('/api/driver/rides', query));
     _throwOnError(response);
     final data = jsonDecode(response.body) as List<dynamic>;
-    return data.map((e) => RideData.fromJson(e as Map<String, dynamic>)).toList();
+    return data
+        .map((e) => RideData.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  Future<DriverDetail> updateDriverAvailability(String driverId, bool available) async {
+  Future<DriverDetail> updateDriverAvailability(
+      String driverId, bool available) async {
     final response = await http.patch(
       _uri('/api/drivers/$driverId/availability'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'available': available}),
     );
     _throwOnError(response);
-    return DriverDetail.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return DriverDetail.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  Future<RideData> updateRideStatus(String rideId, String status) async {
+  Future<RideData> updateRideStatus(String rideId, String status,
+      {String? driverId}) async {
     final response = await http.post(
       _uri('/api/driver/rides/$rideId/status'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'status': status}),
+      body: jsonEncode({
+        'status': status,
+        if (driverId != null && driverId.trim().isNotEmpty)
+          'driverId': driverId,
+      }),
     );
     _throwOnError(response);
     return RideData.fromJson(jsonDecode(response.body) as Map<String, dynamic>);

@@ -142,7 +142,7 @@ class RideController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createRide() async {
+  Future<void> createRide({DateTime? scheduledAt}) async {
     if (selectedCategory == null || selectedService == null) {
       error = 'Selecciona categoria y servicio';
       notifyListeners();
@@ -172,6 +172,7 @@ class RideController extends ChangeNotifier {
         distance: distance,
         pickupLat: pickupLat,
         pickupLng: pickupLng,
+        scheduledAt: scheduledAt?.toUtc().toIso8601String(),
       );
 
       currentRide = ride;
