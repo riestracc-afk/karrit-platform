@@ -41,6 +41,328 @@ Future<void> main() async {
   runApp(const KarrytFlutterApp());
 }
 
+/// Botón mejorado con animación de escala y mejor feedback
+class EnhancedFilledButton extends StatefulWidget {
+  const EnhancedFilledButton({
+    super.key,
+    required this.onPressed,
+    required this.label,
+    this.icon,
+    this.isLoading = false,
+    this.isPressure = false,
+  });
+
+  final VoidCallback? onPressed;
+  final String label;
+  final IconData? icon;
+  final bool isLoading;
+  final bool isPressure;
+
+  @override
+  State<EnhancedFilledButton> createState() => _EnhancedFilledButtonState();
+}
+
+class _EnhancedFilledButtonState extends State<EnhancedFilledButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1, end: 0.95).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  void _onPressed() {
+    if (widget.onPressed == null) return;
+    _scaleController.forward().then((_) {
+      _scaleController.reverse();
+    });
+    HapticFeedback.mediumImpact();
+    widget.onPressed?.call();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: FilledButton.icon(
+            onPressed: widget.onPressed == null ? null : _onPressed,
+            icon: widget.isLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : widget.icon != null
+                    ? Icon(widget.icon)
+                    : const SizedBox.shrink(),
+            label: Text(widget.isLoading ? 'Procesando...' : widget.label),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Wrapper para transiciones de página mejoradas
+class PremiumPageTransition extends PageRouteBuilder {
+  PremiumPageTransition({required super.pageBuilder})
+      : super(
+          transitionDuration: const Duration(milliseconds: 600),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(1, 0);
+            const end = Offset.zero;
+            final tween = Tween(begin: begin, end: end)
+                .chain(CurveTween(curve: Curves.easeInOutCubic));
+            return SlideTransition(
+              position: animation.drive(tween),
+              child: FadeTransition(opacity: animation, child: child),
+            );
+          },
+        );
+}
+
+
+/// Widget con efecto de pulso animado para elementos destacados
+class PulseAnimation extends StatefulWidget {
+  const PulseAnimation({
+    super.key,
+    required this.child,
+    this.duration = const Duration(milliseconds: 1500),
+    this.maxScale = 1.1,
+  });
+
+  final Widget child;
+  final Duration duration;
+  final double maxScale;
+
+  @override
+  State<PulseAnimation> createState() => _PulseAnimationState();
+}
+
+class _PulseAnimationState extends State<PulseAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..repeat();
+    _animation = Tween<double>(begin: 1, end: widget.maxScale).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _animation.value,
+          child: Opacity(
+            opacity: 2 - _animation.value,
+            child: widget.child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Indicador en vivo animado para viajes activos
+class RideLiveIndicator extends StatefulWidget {
+  const RideLiveIndicator({super.key, this.label = 'EN VIVO'});
+
+  final String label;
+
+  @override
+  State<RideLiveIndicator> createState() => _RideLiveIndicatorState();
+}
+
+class _RideLiveIndicatorState extends State<RideLiveIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _sizeAnimation;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+    _sizeAnimation = Tween<double>(begin: 1, end: 1.5).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _opacityAnimation = Tween<double>(begin: 1, end: 0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            AnimatedBuilder(
+              animation: _sizeAnimation,
+              builder: (context, _) => Opacity(
+                opacity: _opacityAnimation.value,
+                child: Container(
+                  width: 12 * _sizeAnimation.value,
+                  height: 12 * _sizeAnimation.value,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: primary, width: 1.5),
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: primary,
+                boxShadow: [
+                  BoxShadow(
+                    color: primary.withAlpha((0.5 * 255).toInt()),
+                    blurRadius: 6,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 8),
+        Text(
+          widget.label,
+          style: TextStyle(
+            color: primary,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Wrapper premium para tarjetas con sombra e iluminación animada
+class PremiumCardWrapper extends StatefulWidget {
+  const PremiumCardWrapper({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.elevation = 1.5,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final double elevation;
+
+  @override
+  State<PremiumCardWrapper> createState() => _PremiumCardWrapperState();
+}
+
+class _PremiumCardWrapperState extends State<PremiumCardWrapper>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _elevationAnimation;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _elevationAnimation =
+        Tween<double>(begin: widget.elevation, end: widget.elevation * 3)
+            .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        _controller.forward();
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        _controller.reverse();
+      },
+      child: AnimatedBuilder(
+        animation: _elevationAnimation,
+        builder: (context, child) {
+          return GestureDetector(
+            onTap: widget.onTap,
+            child: Card(
+              elevation: _elevationAnimation.value,
+              shadowColor:
+                  Theme.of(context).colorScheme.primary.withAlpha((0.3 * 255).toInt()),
+              child: Transform.scale(
+                scale: 1 + ((_elevationAnimation.value - widget.elevation) /
+                        (widget.elevation * 2)) *
+                    0.01,
+                child: widget.child,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+
 final Map<String, String> _runtimeEnv = <String, String>{};
 
 Future<Map<String, String>> _loadRuntimeEnv() async {
