@@ -41,6 +41,223 @@ Future<void> main() async {
   runApp(const KarrytFlutterApp());
 }
 
+/// Indicador de progreso suave con onda animada
+class SmoothProgressIndicator extends StatelessWidget {
+  const SmoothProgressIndicator({
+    super.key,
+    required this.progress,
+    this.height = 4,
+    this.animationDuration = const Duration(milliseconds: 800),
+  });
+
+  final double progress;
+  final double height;
+  final Duration animationDuration;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: progress.clamp(0, 1)),
+      duration: animationDuration,
+      curve: Curves.easeInOutCubic,
+      builder: (context, value, _) {
+        return Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(height / 2),
+          ),
+          child: Stack(
+            children: [
+              Container(
+                width: double.infinity * value,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.primary.withAlpha(180),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(height / 2),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Campo de texto premium con animaciones
+class PremiumTextField extends StatefulWidget {
+  const PremiumTextField({
+    super.key,
+    required this.controller,
+    required this.label,
+    this.icon,
+    this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData? icon;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  State<PremiumTextField> createState() => _PremiumTextFieldState();
+}
+
+class _PremiumTextFieldState extends State<PremiumTextField>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _focusAnimation;
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _focusAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _focusAnimation,
+      builder: (context, _) {
+        return Focus(
+          onFocusChange: (focused) {
+            setState(() => _isFocused = focused);
+            if (focused) {
+              _controller.forward();
+            } else {
+              _controller.reverse();
+            }
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withAlpha((30 * _focusAnimation.value).toInt()),
+                  blurRadius: 8 + (4 * _focusAnimation.value),
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: widget.controller,
+              onChanged: widget.onChanged,
+              decoration: InputDecoration(
+                labelText: widget.label,
+                prefixIcon: widget.icon != null ? Icon(widget.icon) : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Tarjeta animada con efectos premium
+class AnimatedCard extends StatefulWidget {
+  const AnimatedCard({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.elevation = 1,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final double elevation;
+
+  @override
+  State<AnimatedCard> createState() => _AnimatedCardState();
+}
+
+class _AnimatedCardState extends State<AnimatedCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _elevationAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _elevationAnimation =
+        Tween<double>(begin: widget.elevation, end: widget.elevation * 2.5)
+            .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _scaleAnimation = Tween<double>(begin: 1, end: 1.02).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _controller.forward(),
+      onExit: (_) => _controller.reverse(),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedBuilder(
+          animation: _elevationAnimation,
+          builder: (context, _) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: Card(
+                elevation: _elevationAnimation.value,
+                shadowColor: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withAlpha((50).toInt()),
+                child: widget.child,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+
 /// Fondo con gradiente animado opcional para premium UI
 class GradientBackground extends StatelessWidget {
   const GradientBackground({
@@ -4647,7 +4864,7 @@ class _RideScreenState extends State<RideScreen> {
               if (ride.driver != null)
                 _infoLine('Conductor', ride.driver!.name),
               const SizedBox(height: 10),
-              LinearProgressIndicator(value: ride.progress.clamp(0, 1)),
+              SmoothProgressIndicator(progress: ride.progress),
               if (ride.status == 'pending_driver')
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
