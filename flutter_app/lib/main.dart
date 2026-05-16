@@ -120,6 +120,60 @@ class _EnhancedFilledButtonState extends State<EnhancedFilledButton>
   }
 }
 
+/// Icono rotatorio animado para indicadores de carga
+class AnimatedRotatingIcon extends StatefulWidget {
+  const AnimatedRotatingIcon({
+    super.key,
+    required this.icon,
+    this.duration = const Duration(milliseconds: 1500),
+    this.size = 24,
+  });
+
+  final IconData icon;
+  final Duration duration;
+  final double size;
+
+  @override
+  State<AnimatedRotatingIcon> createState() => _AnimatedRotatingIconState();
+}
+
+class _AnimatedRotatingIconState extends State<AnimatedRotatingIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Transform.rotate(
+          angle: _controller.value * 2 * math.pi,
+          child: Icon(
+            widget.icon,
+            size: widget.size,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Wrapper para transiciones de página mejoradas
 class PremiumPageTransition extends PageRouteBuilder {
   PremiumPageTransition({required super.pageBuilder})
@@ -4406,8 +4460,18 @@ class _RideScreenState extends State<RideScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Seguimiento de Viaje',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Seguimiento de Viaje',
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                if (ride != null &&
+                    ['pending_driver', 'accepted', 'in_transit']
+                        .contains(ride.status))
+                  const RideLiveIndicator(),
+              ],
+            ),
             const SizedBox(height: 12),
             if (ride == null)
               const Text('Aun no has solicitado una carga.')
