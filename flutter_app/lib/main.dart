@@ -41,6 +41,254 @@ Future<void> main() async {
   runApp(const KarrytFlutterApp());
 }
 
+/// Botón de acción flotante mejorado con animación de escala
+class FloatingActionButtonPlus extends StatefulWidget {
+  const FloatingActionButtonPlus({
+    super.key,
+    required this.onPressed,
+    required this.icon,
+    this.label,
+    this.heroTag,
+  });
+
+  final VoidCallback onPressed;
+  final IconData icon;
+  final String? label;
+  final Object? heroTag;
+
+  @override
+  State<FloatingActionButtonPlus> createState() =>
+      _FloatingActionButtonPlusState();
+}
+
+class _FloatingActionButtonPlusState extends State<FloatingActionButtonPlus>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1, end: 0.9).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onPressed() {
+    _controller.forward().then((_) {
+      _controller.reverse();
+    });
+    HapticFeedback.mediumImpact();
+    widget.onPressed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, _) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: FloatingActionButton(
+            onPressed: _onPressed,
+            heroTag: widget.heroTag,
+            child: Icon(widget.icon),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// ListTile mejorado con animaciones de hover
+class SmartListTile extends StatefulWidget {
+  const SmartListTile({
+    super.key,
+    this.leading,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
+
+  final Widget? leading;
+  final Widget title;
+  final Widget? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  State<SmartListTile> createState() => _SmartListTileState();
+}
+
+class _SmartListTileState extends State<SmartListTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _transitionAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _transitionAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _controller.forward(),
+      onExit: (_) => _controller.reverse(),
+      child: AnimatedBuilder(
+        animation: _transitionAnimation,
+        builder: (context, _) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withAlpha((5 * _transitionAnimation.value).toInt()),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ListTile(
+              leading: widget.leading,
+              title: widget.title,
+              subtitle: widget.subtitle,
+              trailing: widget.trailing,
+              onTap: widget.onTap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Diálogo de carga avanzado con animaciones
+class AdvancedLoadingDialog extends StatefulWidget {
+  const AdvancedLoadingDialog({
+    super.key,
+    required this.title,
+    this.message,
+    this.showProgress = false,
+  });
+
+  final String title;
+  final String? message;
+  final bool showProgress;
+
+  @override
+  State<AdvancedLoadingDialog> createState() => _AdvancedLoadingDialogState();
+}
+
+class _AdvancedLoadingDialogState extends State<AdvancedLoadingDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    )..forward();
+    _slideAnimation = Tween<double>(begin: 50, end: 0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _slideAnimation,
+      builder: (context, _) {
+        return Opacity(
+          opacity: _fadeAnimation.value,
+          child: Transform.translate(
+            offset: Offset(0, _slideAnimation.value),
+            child: Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation(
+                        Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    if (widget.message != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.message!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                    if (widget.showProgress) ...[
+                      const SizedBox(height: 16),
+                      SmoothProgressIndicator(
+                        progress: 0.6,
+                        height: 3,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+
 /// Indicador de progreso suave con onda animada
 class SmoothProgressIndicator extends StatelessWidget {
   const SmoothProgressIndicator({
