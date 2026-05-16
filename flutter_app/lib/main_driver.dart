@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/app_theme.dart';
 import 'main.dart' show DriverScreen;
 
 void main() {
@@ -11,15 +12,10 @@ class KarrytDriverApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF1D4ED8);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Karryt Chofer',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: seed),
-        scaffoldBackgroundColor: const Color(0xFFF3F6FB),
-      ),
+      theme: buildKarrytTheme(KarrytRoleTheme.driver),
       home: const DriverScreen(),
     );
   }

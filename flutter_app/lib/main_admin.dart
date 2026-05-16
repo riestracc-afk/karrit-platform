@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/app_theme.dart';
 import 'main.dart' show AdminScreen;
 
 void main() {
@@ -11,15 +12,10 @@ class KarrytAdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF7C2D12);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Karryt Admin PC',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: seed),
-        scaffoldBackgroundColor: const Color(0xFFF3F6FB),
-      ),
+      theme: buildKarrytTheme(KarrytRoleTheme.admin),
       home: const _AdminDesktopFrame(),
     );
   }

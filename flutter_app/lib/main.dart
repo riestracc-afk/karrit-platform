@@ -17,11 +17,13 @@ import 'package:flutter/services.dart'
     Clipboard,
     ClipboardData,
     HapticFeedback,
+    LogicalKeyboardKey,
     SystemSound,
     SystemSoundType,
     rootBundle;
 
 import 'core/api_base.dart';
+import 'core/app_theme.dart';
 import 'core/csv_download.dart';
 import 'data/address_store.dart';
 import 'data/api_client.dart';
@@ -176,18 +178,87 @@ class KarrytFlutterApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF0F4CFF);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Karryt Mueve',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: seed),
-        scaffoldBackgroundColor: const Color(0xFFF3F6FB),
-      ),
+      theme: buildKarrytTheme(KarrytRoleTheme.user),
       home: const RideScreen(),
     );
   }
+}
+
+/// Widget premium para estados vacíos (sin datos/resultados)
+class KarrytEmptyState extends StatelessWidget {
+  const KarrytEmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.action,
+    this.actionLabel,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback? action;
+  final String? actionLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Icon(
+                icon,
+                size: 56,
+                color: theme.colorScheme.primary.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall,
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                subtitle!,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (action != null && actionLabel != null) ...[
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: action,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(actionLabel!),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KarrytShortcutIntent extends Intent {
+  const _KarrytShortcutIntent(this.command);
+  final String command;
 }
 
 class WorkspaceShell extends StatefulWidget {
@@ -2469,6 +2540,58 @@ class _RideScreenState extends State<RideScreen> {
     });
   }
 
+  Future<void> _showRideCommandMenu() async {
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.refresh),
+                title: const Text('Recalcular tarifa (Ctrl+R)'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _recalculateFareWithConfirmedRoute();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.my_location),
+                title: const Text('Usar mi ubicacion (Ctrl+L)'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _useDeviceLocation();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.schedule),
+                title: const Text('Programar viaje (Ctrl+Shift+S)'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickScheduledAt();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.send),
+                title: const Text('Solicitar viaje (Ctrl+Enter)'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _requestRideWithConfirmedRoute();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _pickupGeocodeDebounce?.cancel();
@@ -2488,7 +2611,47 @@ class _RideScreenState extends State<RideScreen> {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        return Scaffold(
+        return Shortcuts(
+          shortcuts: const <ShortcutActivator, Intent>{
+            SingleActivator(LogicalKeyboardKey.enter, control: true):
+                _KarrytShortcutIntent('requestRide'),
+            SingleActivator(LogicalKeyboardKey.keyR, control: true):
+                _KarrytShortcutIntent('recalculateFare'),
+            SingleActivator(LogicalKeyboardKey.keyL, control: true):
+                _KarrytShortcutIntent('useLocation'),
+            SingleActivator(LogicalKeyboardKey.keyS,
+                control: true, shift: true): _KarrytShortcutIntent('scheduleRide'),
+            SingleActivator(LogicalKeyboardKey.slash, shift: true):
+                _KarrytShortcutIntent('openCommands'),
+          },
+          child: Actions(
+            actions: <Type, Action<Intent>>{
+              _KarrytShortcutIntent: CallbackAction<_KarrytShortcutIntent>(
+                onInvoke: (intent) {
+                  switch (intent.command) {
+                    case 'requestRide':
+                      _requestRideWithConfirmedRoute();
+                      break;
+                    case 'recalculateFare':
+                      _recalculateFareWithConfirmedRoute();
+                      break;
+                    case 'useLocation':
+                      _useDeviceLocation();
+                      break;
+                    case 'scheduleRide':
+                      _pickScheduledAt();
+                      break;
+                    case 'openCommands':
+                      _showRideCommandMenu();
+                      break;
+                  }
+                  return null;
+                },
+              ),
+            },
+            child: Focus(
+              autofocus: true,
+              child: Scaffold(
           appBar: AppBar(
             elevation: 4,
             shadowColor: Colors.black.withValues(alpha: 0.2),
@@ -2538,6 +2701,13 @@ class _RideScreenState extends State<RideScreen> {
                 ),
               ],
             ),
+            actions: [
+              IconButton(
+                tooltip: 'Comandos y atajos',
+                onPressed: _showRideCommandMenu,
+                icon: const Icon(Icons.keyboard_command_key),
+              ),
+            ],
           ),
           body: _controller.loading
               ? const Center(child: CircularProgressIndicator())
@@ -2667,6 +2837,9 @@ class _RideScreenState extends State<RideScreen> {
                     ),
                   ),
                 ),
+              ),
+            ),
+          ),
               ),
             ),
           ),
@@ -4660,6 +4833,7 @@ class _AdminScreenState extends State<AdminScreen> {
   bool _loading = true;
   bool _loadingRides = false;
   bool _saving = false;
+  bool _adminDensityCompact = false;
   String? _error;
   String? _success;
 
@@ -4672,7 +4846,24 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _initializeAdminScreen() async {
     await _restoreAdminStatementPreferences();
+    await _restoreAdminDensityPreference();
     await _load();
+  }
+
+  Future<void> _restoreAdminDensityPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final density = prefs.getBool('admin.densityCompact') ?? false;
+      if (!mounted) return;
+      setState(() => _adminDensityCompact = density);
+    } catch (_) {}
+  }
+
+  Future<void> _saveAdminDensityPreference(bool compact) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('admin.densityCompact', compact);
+    } catch (_) {}
   }
 
   Future<void> _restoreAdminStatementPreferences() async {
@@ -5716,7 +5907,11 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
                 const SizedBox(height: 10),
                 if (topDrivers.isEmpty)
-                  const Text('No hay choferes que cumplan el filtro actual.')
+                  KarrytEmptyState(
+                    icon: Icons.filter_alt_off_outlined,
+                    title: 'Sin resultados',
+                    subtitle: 'Ajusta los filtros para ver más choferes.',
+                  )
                 else
                   ...topDrivers.take(8).map((driver) {
                     return ListTile(
@@ -8871,7 +9066,13 @@ class _AdminScreenState extends State<AdminScreen> {
                 if (_loadingDrivers)
                   const LinearProgressIndicator()
                 else if (pageDrivers.isEmpty)
-                  const Text('No hay choferes registrados aun.')
+                  KarrytEmptyState(
+                    icon: Icons.people_outline,
+                    title: 'Sin choferes registrados',
+                    subtitle: 'Agrega el primer chofer para comenzar.',
+                    action: () => setState(() => _editingDriverId = null),
+                    actionLabel: 'Registrar chofer',
+                  )
                 else
                   ...pageDrivers.map((driver) {
                     final categoryLabel =
@@ -9289,6 +9490,9 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
+  VisualDensity get _adminDensity =>
+      _adminDensityCompact ? VisualDensity.compact : VisualDensity.standard;
+
   String _shortDateLabel(DateTime? value) {
     if (value == null) {
       return 'Sin filtro';
@@ -9454,6 +9658,54 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
+  Future<void> _showAdminCommandMenu() async {
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.refresh),
+                title: const Text('Actualizar consola (Ctrl+R)'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _load();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings_suggest_outlined),
+                title: const Text('Ir a Operaciones (Ctrl+2)'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    _selectedModule = _AdminModule.operations;
+                  });
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.local_shipping_outlined),
+                title: const Text('Ir a Choferes (Ctrl+3)'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    _selectedModule = _AdminModule.drivers;
+                  });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildAdvancedFiltersCard() {
     final municipalities = _availableMunicipalities().toList()..sort();
     final categoryOptions = _categoryFields.keys.toList()..sort();
@@ -9568,7 +9820,46 @@ class _AdminScreenState extends State<AdminScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.keyR, control: true):
+            _KarrytShortcutIntent('adminRefresh'),
+        SingleActivator(LogicalKeyboardKey.digit2, control: true):
+            _KarrytShortcutIntent('adminOps'),
+        SingleActivator(LogicalKeyboardKey.digit3, control: true):
+            _KarrytShortcutIntent('adminDrivers'),
+        SingleActivator(LogicalKeyboardKey.slash, shift: true):
+            _KarrytShortcutIntent('adminCommands'),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _KarrytShortcutIntent: CallbackAction<_KarrytShortcutIntent>(
+            onInvoke: (intent) {
+              switch (intent.command) {
+                case 'adminRefresh':
+                  _load();
+                  break;
+                case 'adminOps':
+                  setState(() {
+                    _selectedModule = _AdminModule.operations;
+                  });
+                  break;
+                case 'adminDrivers':
+                  setState(() {
+                    _selectedModule = _AdminModule.drivers;
+                  });
+                  break;
+                case 'adminCommands':
+                  _showAdminCommandMenu();
+                  break;
+              }
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Scaffold(
       backgroundColor: const Color(0xFFF4F6FB),
       appBar: AppBar(
         elevation: 4,
@@ -9612,6 +9903,30 @@ class _AdminScreenState extends State<AdminScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Actualizar',
+            onPressed: _load,
+            icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
+            tooltip: _adminDensityCompact ? 'Cómodo' : 'Compacto',
+            onPressed: () {
+              setState(() {
+                _adminDensityCompact = !_adminDensityCompact;
+              });
+              unawaited(_saveAdminDensityPreference(_adminDensityCompact));
+            },
+            icon: Icon(_adminDensityCompact
+                ? Icons.unfold_less_outlined
+                : Icons.unfold_more_outlined),
+          ),
+          IconButton(
+            tooltip: 'Comandos y atajos',
+            onPressed: _showAdminCommandMenu,
+            icon: const Icon(Icons.keyboard_command_key),
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -9631,11 +9946,27 @@ class _AdminScreenState extends State<AdminScreen> {
                   ],
                   _buildAdminModuleMenu(),
                   const SizedBox(height: 12),
-                  _buildModuleContent(),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.1, 0),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    ),
+                    child: _buildModuleContent(),
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
             ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -9748,7 +10079,11 @@ class _AdminScreenState extends State<AdminScreen> {
             if (_loadingRides)
               const LinearProgressIndicator()
             else if (rides.isEmpty)
-              const Text('Sin viajes registrados por ahora.')
+              KarrytEmptyState(
+                icon: Icons.delivery_dining_outlined,
+                title: 'Sin viajes aún',
+                subtitle: 'Cuando aceptes un viaje, aparecerá aquí.',
+              )
             else
               ...rides.take(20).map(
                     (ride) => Padding(
@@ -10773,6 +11108,53 @@ class _DriverScreenState extends State<DriverScreen> {
     }
   }
 
+  Future<void> _showDriverCommandMenu() async {
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.refresh),
+                title: const Text('Actualizar modulo (Ctrl+R)'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _refreshAll();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.account_balance_wallet_outlined),
+                title: const Text('Actualizar estado de cuenta (Ctrl+E)'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _loadAccountStatement();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.tune),
+                title: const Text('Solo viajes activos'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    _activeOnly = true;
+                  });
+                  _loadRides();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedDriver = _drivers
@@ -10780,7 +11162,37 @@ class _DriverScreenState extends State<DriverScreen> {
         .cast<DriverDetail?>()
         .firstOrNull;
 
-    return Scaffold(
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.keyR, control: true):
+            _KarrytShortcutIntent('driverRefresh'),
+        SingleActivator(LogicalKeyboardKey.keyE, control: true):
+            _KarrytShortcutIntent('driverStatement'),
+        SingleActivator(LogicalKeyboardKey.slash, shift: true):
+            _KarrytShortcutIntent('driverCommands'),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _KarrytShortcutIntent: CallbackAction<_KarrytShortcutIntent>(
+            onInvoke: (intent) {
+              switch (intent.command) {
+                case 'driverRefresh':
+                  _refreshAll();
+                  break;
+                case 'driverStatement':
+                  _loadAccountStatement();
+                  break;
+                case 'driverCommands':
+                  _showDriverCommandMenu();
+                  break;
+              }
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Scaffold(
       backgroundColor: const Color(0xFFF4F7FB),
       appBar: AppBar(
         elevation: 4,
@@ -10828,6 +11240,11 @@ class _DriverScreenState extends State<DriverScreen> {
           IconButton(
             onPressed: _refreshAll,
             icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
+            tooltip: 'Comandos y atajos',
+            onPressed: _showDriverCommandMenu,
+            icon: const Icon(Icons.keyboard_command_key),
           ),
         ],
       ),
@@ -11193,15 +11610,21 @@ class _DriverScreenState extends State<DriverScreen> {
                   const SizedBox(height: 12),
                   ..._rides.map((ride) => _buildRideCard(ride)),
                   if (_rides.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 16),
-                      child: Text(
-                          'No hay viajes para este chofer con el filtro actual.'),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: KarrytEmptyState(
+                        icon: Icons.filter_alt_off_outlined,
+                        title: 'Sin viajes',
+                        subtitle: 'Ajusta los filtros para ver más resultados.',
+                      ),
                     ),
                   const SizedBox(height: 24),
                 ],
               ),
             ),
+          ),
+        ),
+      ),
     );
   }
 
