@@ -41,6 +41,147 @@ Future<void> main() async {
   runApp(const KarrytFlutterApp());
 }
 
+/// Fondo con gradiente animado opcional para premium UI
+class GradientBackground extends StatelessWidget {
+  const GradientBackground({
+    super.key,
+    required this.child,
+    this.colors,
+    this.animated = false,
+  });
+
+  final Widget child;
+  final List<Color>? colors;
+  final bool animated;
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final surfaceColor = Theme.of(context).colorScheme.surface;
+    final effectiveColors = colors ?? [primaryColor.withAlpha(10), surfaceColor];
+
+    if (!animated) {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: effectiveColors,
+            stops: const [0, 1],
+          ),
+        ),
+        child: child,
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: effectiveColors,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Item de lista con animación escalonada
+class StaggeredAnimationItem extends StatelessWidget {
+  const StaggeredAnimationItem({
+    super.key,
+    required this.index,
+    required this.child,
+    this.delayMs = 50,
+    this.durationMs = 400,
+  });
+
+  final int index;
+  final Widget child;
+  final int delayMs;
+  final int durationMs;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: durationMs + (index * delayMs)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 20),
+          child: Opacity(
+            opacity: value,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Badge de estado con colores temáticos y pulso
+class StatusBadge extends StatelessWidget {
+  const StatusBadge({
+    super.key,
+    required this.label,
+    this.status = 'pending',
+    this.pulse = false,
+  });
+
+  final String label;
+  final String status;
+  final bool pulse;
+
+  Color _getStatusColor(BuildContext context) {
+    switch (status) {
+      case 'active':
+      case 'accepted':
+      case 'in_transit':
+        return Colors.green;
+      case 'completed':
+        return Colors.blue;
+      case 'pending':
+      case 'pending_driver':
+        return Colors.orange;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Theme.of(context).colorScheme.primary;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _getStatusColor(context);
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withAlpha((0.15 * 255).toInt()),
+        border: Border.all(color: color.withAlpha((0.3 * 255).toInt()), width: 1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      ),
+    );
+
+    if (!pulse) return badge;
+
+    return PulseAnimation(
+      maxScale: 1.05,
+      child: badge,
+    );
+  }
+}
+
+
 /// Botón mejorado con animación de escala y mejor feedback
 class EnhancedFilledButton extends StatefulWidget {
   const EnhancedFilledButton({
@@ -4477,7 +4618,26 @@ class _RideScreenState extends State<RideScreen> {
               const Text('Aun no has solicitado una carga.')
             else ...[
               _infoLine('ID', ride.id),
-              _infoLine('Estado', statusToLabel(ride.status)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 110,
+                      child: Text('Estado',
+                          style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                    Expanded(
+                      child: StatusBadge(
+                        label: statusToLabel(ride.status),
+                        status: ride.status,
+                        pulse: ['pending_driver', 'accepted']
+                            .contains(ride.status),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               _infoLine('Solicitud', requestTypeToLabel(ride.requestType)),
               if (ride.scheduledAt != null)
                 _infoLine(
