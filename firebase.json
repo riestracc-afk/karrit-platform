@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "project-404e35e2-6a5d-421b-970",
     "public": "flutter_app/build/hosting",
     "ignore": [
       "firebase.json",
@@ -7,6 +8,20 @@
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/api{,/**}",
+        "run": {
+          "serviceId": "karryt-api",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/socket.io{,/**}",
+        "run": {
+          "serviceId": "karryt-api",
+          "region": "us-central1"
+        }
+      },
       {
         "source": "/chofer{,/**}",
         "destination": "/chofer/index.html"

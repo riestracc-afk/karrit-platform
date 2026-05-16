@@ -24,11 +24,12 @@
 
 ## 🎯 Próximos Pasos (TÚ DEBES HACER ESTOS)
 
-### **1️⃣ Crear Proyecto Firebase** (2 minutos)
+### **1️⃣ Usar Proyecto Firebase Actual** (2 minutos)
 ```
-https://console.firebase.google.com → Nuevo Proyecto
+https://console.firebase.google.com → Proyecto existente
 Nombre visible: Karryt Platform
-ID técnico del proyecto: karryt-platform
+ID técnico actual del proyecto: project-404e35e2-6a5d-421b-970
+Migración a karryt-platform: pendiente si Google libera cuota más adelante
 ```
 
 ### **2️⃣ Obtener Credenciales** (1 minuto)
@@ -54,14 +55,16 @@ git push -u origin main
 ### **5️⃣ Configurar Secrets en GitHub** (2 minutos)
 ```
 GitHub → Settings → Secrets and variables → Actions
-Crear Secret: FIREBASE_SERVICE_ACCOUNT
-Pegar el JSON descargado
+Ejecutar: firebase login:ci --no-localhost
+Crear Secret: FIREBASE_TOKEN
+Pegar el token generado
 ```
 
 ### **6️⃣ Crear .env Local** (1 minuto)
 ```
 Copiar .env.example → .env
-Llenar con datos del JSON descargado
+Usar FIREBASE_PROJECT_ID del proyecto activo
+Mantener USE_FIRESTORE=false hasta tener credenciales validas
 ```
 
 ---
@@ -71,7 +74,7 @@ Llenar con datos del JSON descargado
 | Aspecto | Antes | Después |
 |--------|-------|---------|
 | Base de datos | En memoria (pierde datos) | Firestore (persistente) |
-| Hosting | localhost:3000 | `https://karryt-platform.web.app` |
+| Hosting | localhost:3000 | `https://project-404e35e2-6a5d-421b-970.web.app` |
 | Versionamiento | Nada | GitHub con historial completo |
 | Deploy | Manual | Automático en cada push |
 | Credenciales | En código | Variables de entorno seguras |
@@ -103,7 +106,7 @@ c:\Proyectos\Proyecto Karryt
 ## 🚀 Timeline
 
 **Hoy (10 minutos):** Creas cuentas y configuras secrets  
-**Resultado:** App en `https://karryt-platform.web.app` funcionando con datos persistentes
+**Resultado:** App en `https://project-404e35e2-6a5d-421b-970.web.app` funcionando con datos persistentes
 
 ---
 
@@ -113,7 +116,7 @@ c:\Proyectos\Proyecto Karryt
 2. Instala dependencias
 3. Ejecuta linting (si existe)
 4. **Despliega en Firebase Hosting**
-5. **Tu app está viva públicamente**
+5. **Tu app está viva públicamente en el proyecto Firebase actual**
 
 Cualquier `git push` futuro redeploy automáticamente. 🔄
 
@@ -132,5 +135,5 @@ Cualquier `git push` futuro redeploy automáticamente. 🔄
 
 Ejecuta los 6 pasos del SETUP_FIREBASE_GITHUB.md y te digo dónde estancarse.
 
-**¿Listo para empezar? Abre Firebase Console. Yo espero aquí.** 🚀
+**Nota operativa:** GitHub Actions ya usa `FIREBASE_TOKEN` porque Google Cloud esta bloqueando claves JSON con la politica `iam.disableServiceAccountKeyCreation`.
 

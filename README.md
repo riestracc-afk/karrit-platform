@@ -127,6 +127,23 @@ npm run start:flutter
 
 La aplicación estará disponible en: **http://localhost:3000**
 
+## Producción Web
+
+El frontend web se publica en Firebase Hosting y el backend Express ahora queda preparado para desplegarse en Cloud Run como servicio `karryt-api`.
+
+- `Firebase Hosting` sirve `/`, `/chofer` y `/admin`.
+- Las rutas `/api/**` y `/socket.io/**` se reescriben al servicio `karryt-api` en `us-central1`.
+- En producción, el frontend usa el mismo origen del sitio publicado, por lo que ya no depende de `localhost:3000`.
+- El workflow de GitHub despliega primero Cloud Run y luego Hosting.
+
+Para dejarlo operativo en GitHub Actions necesitas estos secrets:
+
+- `FIREBASE_TOKEN`
+- `GCP_WIF_PROVIDER`
+- `GCP_SERVICE_ACCOUNT`
+
+La guía de setup quedó actualizada en [SETUP_FIREBASE_GITHUB.md](SETUP_FIREBASE_GITHUB.md).
+
 ### Ejecutar cliente Flutter
 ```bash
 cd "c:\Proyectos\Proyecto Karryt\flutter_app"

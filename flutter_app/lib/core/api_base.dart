@@ -9,6 +9,12 @@ String resolveApiBaseUrl() {
   }
 
   if (kIsWeb) {
+    final host = Uri.base.host.toLowerCase();
+    final isLocalHost = host == 'localhost' || host == '127.0.0.1';
+    if (!isLocalHost && Uri.base.hasAuthority) {
+      return Uri.base.origin;
+    }
+
     return 'http://localhost:3000';
   }
 

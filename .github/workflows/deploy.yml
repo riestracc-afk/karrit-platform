@@ -6,10 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
+      FIREBASE_PROJECT_ID: project-404e35e2-6a5d-421b-970
+      CLOUD_RUN_SERVICE: karryt-api
+      CLOUD_RUN_REGION: us-central1
+      CLOUD_RUN_TIMEOUT: 3600
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
@@ -34,11 +42,49 @@ jobs:
       - name: Build Flutter Web Multi-App
         run: npm run build:web:multi
 
+      - name: Validate deploy secrets
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        shell: bash
+        run: |
+          if [ -z "${{ secrets['FIREBASE_TOKEN'] }}" ]; then
+            echo "Falta configurar el secret FIREBASE_TOKEN" >&2
+            exit 1
+          fi
+
+          if [ -z "${{ secrets['GCP_WIF_PROVIDER'] }}" ] || [ -z "${{ secrets['GCP_SERVICE_ACCOUNT'] }}" ]; then
+            echo "Faltan los secrets GCP_WIF_PROVIDER y/o GCP_SERVICE_ACCOUNT para desplegar Cloud Run" >&2
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.FIREBASE_PROJECT_ID }}
+
+      - name: Deploy backend to Cloud Run
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        shell: bash
+        run: |
+          gcloud run deploy "$CLOUD_RUN_SERVICE" \
+            --source . \
+            --project "$FIREBASE_PROJECT_ID" \
+            --region "$CLOUD_RUN_REGION" \
+            --allow-unauthenticated \
+            --timeout "$CLOUD_RUN_TIMEOUT" \
+            --set-env-vars "NODE_ENV=production,USE_FIRESTORE=false" \
+            --quiet
+
       - name: Deploy to Firebase
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         shell: bash
         run: |
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/firebase-service-account.json"
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
-          npx firebase-tools deploy --only hosting --project karrit-platform --non-interactive
+          npx firebase-tools deploy --only hosting --project "$FIREBASE_PROJECT_ID" --token "${{ secrets['FIREBASE_TOKEN'] }}" --non-interactive
 

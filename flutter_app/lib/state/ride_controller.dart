@@ -4,6 +4,89 @@ import '../data/api_client.dart';
 import '../data/realtime_client.dart';
 import '../domain/models.dart';
 
+final Map<String, VehicleCategory> _demoCategories = {
+  'pickup_mini': VehicleCategory(
+    id: 'pickup_mini',
+    label: 'Pick-up Mini',
+    capacity: 'Hasta 800 kg',
+    description: 'Vehiculos compactos de carga ligera',
+    boxSize: '1.80 x 1.50 x 0.45 m',
+  ),
+  'specialized_1t': VehicleCategory(
+    id: 'specialized_1t',
+    label: 'Especializada 1 tonelada',
+    capacity: 'Hasta 1.1 tonelada',
+    description: 'Camionetas especializadas para carga estructurada',
+    boxSize: '2.60 x 1.80 x 0.40 m',
+  ),
+  'truck_3t': VehicleCategory(
+    id: 'truck_3t',
+    label: 'Especializada 3 tonelada',
+    capacity: 'Hasta 3 toneladas',
+    description: 'Camiones medianos para carga consolidada',
+    boxSize: '4.20 x 2.10 x 2.10 m',
+  ),
+  'dump_truck': VehicleCategory(
+    id: 'dump_truck',
+    label: 'Camión de Volteo',
+    capacity: 'Hasta 8 toneladas',
+    description: 'Camiones especializados para carga a granel',
+    boxSize: '3.40 x 2.20 x 0.80 m (6 m3 aprox.)',
+  ),
+};
+
+final Map<String, Map<String, ServiceItem>> _demoServices = {
+  'pickup_mini': {
+    'local': ServiceItem(label: 'Recorrido Local'),
+    'regional': ServiceItem(label: 'Recorrido Regional'),
+  },
+  'specialized_1t': {
+    'structural': ServiceItem(label: 'Carga Estructural'),
+  },
+  'truck_3t': {
+    'standard': ServiceItem(label: 'Carga Estándar'),
+    'heavy': ServiceItem(label: 'Carga Pesada'),
+  },
+  'dump_truck': {
+    'bulk': ServiceItem(label: 'Carga a Granel'),
+    'specialized': ServiceItem(label: 'Carga Especializada'),
+  },
+};
+
+final List<PricingRow> _demoPricing = [
+  PricingRow(
+    categoryLabel: 'Pick-up Mini',
+    startFare: 150,
+    perKmRate: 18,
+    waitPerMinRate: 4,
+  ),
+  PricingRow(
+    categoryLabel: 'Especializada 1 tonelada',
+    startFare: 300,
+    perKmRate: 30,
+    waitPerMinRate: 6,
+  ),
+  PricingRow(
+    categoryLabel: 'Especializada 3 tonelada',
+    startFare: 700,
+    perKmRate: 45,
+    waitPerMinRate: 8,
+  ),
+  PricingRow(
+    categoryLabel: 'Camión de Volteo',
+    startFare: 1500,
+    perKmRate: 75,
+    waitPerMinRate: 12,
+  ),
+];
+
+final Map<String, ({double startFare, double perKmRate})> _demoRateCard = {
+  'pickup_mini': (startFare: 150, perKmRate: 18),
+  'specialized_1t': (startFare: 300, perKmRate: 30),
+  'truck_3t': (startFare: 700, perKmRate: 45),
+  'dump_truck': (startFare: 1500, perKmRate: 75),
+};
+
 class RideController extends ChangeNotifier {
   RideController({
     required ApiClient apiClient,
@@ -38,6 +121,58 @@ class RideController extends ChangeNotifier {
   String fareLabel = 'MXN --.--';
   String? error;
 
+  void _activateDemoMode(String message) {
+    categories = _demoCategories.map(
+      (key, value) => MapEntry(
+        key,
+        VehicleCategory(
+          id: value.id,
+          label: value.label,
+          capacity: value.capacity,
+          description: value.description,
+          boxSize: value.boxSize,
+        ),
+      ),
+    );
+
+    pricing = _demoPricing
+        .map(
+          (row) => PricingRow(
+            categoryLabel: row.categoryLabel,
+            startFare: row.startFare,
+            perKmRate: row.perKmRate,
+            waitPerMinRate: row.waitPerMinRate,
+          ),
+        )
+        .toList();
+
+    selectedCategory ??= categories.keys.isNotEmpty ? categories.keys.first : null;
+    services = _demoServices[selectedCategory] != null
+        ? _demoServices[selectedCategory]!.map(
+            (key, value) => MapEntry(key, ServiceItem(label: value.label)),
+          )
+        : {};
+    selectedService = services.isNotEmpty ? services.keys.first : null;
+    fareLabel = _estimateDemoFare();
+    error = message;
+  }
+
+  String _estimateDemoFare() {
+    final categoryKey = selectedCategory;
+    if (categoryKey == null) {
+      return 'MXN --.--';
+    }
+
+    final rate = _demoRateCard[categoryKey];
+    if (rate == null) {
+      return 'MXN --.--';
+    }
+
+    final distance = double.tryParse(distanceText.value.trim()) ?? 0;
+    final total = rate.startFare + (distance * rate.perKmRate);
+    return 'MXN ${total.toStringAsFixed(2)}';
+  }
+
   Future<void> init() async {
     loading = true;
     error = null;
@@ -70,7 +205,9 @@ class RideController extends ChangeNotifier {
 
       await quote();
     } catch (e) {
-      error = 'No se pudo inicializar la app: $e';
+      _activateDemoMode(
+        'Modo demo visual activo. Se muestran categorías, servicios y tarifas locales.',
+      );
     } finally {
       loading = false;
       notifyListeners();
@@ -83,7 +220,13 @@ class RideController extends ChangeNotifier {
       selectedService = services.isNotEmpty ? services.keys.first : null;
       notifyListeners();
     } catch (e) {
-      error = 'No se pudieron cargar servicios: $e';
+      services = _demoServices[category] != null
+          ? _demoServices[category]!.map(
+              (key, value) => MapEntry(key, ServiceItem(label: value.label)),
+            )
+          : {};
+      selectedService = services.isNotEmpty ? services.keys.first : null;
+      error = 'Servicios demo activos para esta categoría.';
       notifyListeners();
     }
   }
@@ -99,6 +242,16 @@ class RideController extends ChangeNotifier {
     notifyListeners();
 
     await loadServices(category);
+    await quote();
+  }
+
+  Future<void> selectService(String? service) async {
+    if (service == null || selectedService == service) {
+      return;
+    }
+
+    selectedService = service;
+    notifyListeners();
     await quote();
   }
 
@@ -123,7 +276,8 @@ class RideController extends ChangeNotifier {
       );
       fareLabel = result.currencyFormatted;
     } catch (e) {
-      error = 'No se pudo calcular tarifa: $e';
+      fareLabel = _estimateDemoFare();
+      error = 'Estimación demo mostrada con tarifas locales.';
     } finally {
       quoting = false;
       notifyListeners();
@@ -136,13 +290,30 @@ class RideController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearPickupPoint() {
+    pickupLat = null;
+    pickupLng = null;
+    notifyListeners();
+  }
+
   void setDropoffPoint(double lat, double lng) {
     dropoffLat = lat;
     dropoffLng = lng;
     notifyListeners();
   }
 
-  Future<void> createRide({DateTime? scheduledAt}) async {
+  void clearDropoffPoint() {
+    dropoffLat = null;
+    dropoffLng = null;
+    notifyListeners();
+  }
+
+  Future<void> createRide({
+    DateTime? scheduledAt,
+    String requestType = 'urgent',
+    bool notifyWhatsApp = false,
+    bool notifySms = false,
+  }) async {
     if (selectedCategory == null || selectedService == null) {
       error = 'Selecciona categoria y servicio';
       notifyListeners();
@@ -173,6 +344,11 @@ class RideController extends ChangeNotifier {
         pickupLat: pickupLat,
         pickupLng: pickupLng,
         scheduledAt: scheduledAt?.toUtc().toIso8601String(),
+        requestType: requestType,
+        customerId: 'app-user-demo',
+        customerName: 'Cliente App',
+        notifyWhatsApp: notifyWhatsApp,
+        notifySms: notifySms,
       );
 
       currentRide = ride;
@@ -200,12 +376,46 @@ class RideController extends ChangeNotifier {
     }
   }
 
+  Future<void> submitRideRating({
+    required int score,
+    String? comment,
+  }) async {
+    if (currentRide == null) {
+      return;
+    }
+
+    try {
+      final updated = await _apiClient.submitRideRating(
+        rideId: currentRide!.id,
+        score: score,
+        comment: comment,
+      );
+      currentRide = updated;
+      notifyListeners();
+    } catch (e) {
+      error = 'No se pudo registrar la calificacion: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   bool get canCancel {
     final status = currentRide?.status;
     return status != null &&
         status != 'completed' &&
         status != 'cancelled' &&
         status != 'no_drivers';
+  }
+
+  bool get canRateCurrentRide {
+    final ride = currentRide;
+    if (ride == null) {
+      return false;
+    }
+
+    return ride.status == 'completed' &&
+        ride.driver != null &&
+        ride.riderRating == null;
   }
 
   @override

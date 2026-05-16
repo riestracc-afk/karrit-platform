@@ -1,11 +1,11 @@
 ﻿{
-    "name": "Karryt Flutter",
-    "short_name": "Karryt",
+    "name": "Karryt Mueve",
+    "short_name": "Mueve",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "App de usuario Karryt Mueve para solicitar viajes de carga.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

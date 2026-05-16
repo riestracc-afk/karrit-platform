@@ -95,7 +95,7 @@ Rutas de produccion esperadas:
 
 Identidad visual separada por app (generada en build multi):
 
-- Usuario: titulo `Karryt Usuario`, color base verde, favicon `U`
+- Usuario: titulo `Karryt Mueve`, color base verde, favicon `M`
 - Chofer: titulo `Karryt Chofer`, color base azul, favicon `C`
 - Admin PC: titulo `Karryt Admin PC`, color base cobre, favicon `A`
 
@@ -125,4 +125,14 @@ Esto permite reutilizar historial entre dispositivos y conserva un respaldo loca
 ## Nota
 
 El frontend del proyecto es Flutter. Para despliegue web, compila con `flutter build web`.
+
+## Push Notifications (Push First)
+
+Consulta la guia completa en:
+- `PUSH_SETUP.md`
+
+Incluye:
+- Configuracion backend Firebase Admin
+- VAPID key para Web (`FIREBASE_WEB_VAPID_KEY`)
+- Fallback WhatsApp/SMS como respaldo
 

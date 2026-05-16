@@ -19,9 +19,11 @@ class RealtimeClient {
     _socket = io.io(
       baseUrl,
       <String, dynamic>{
-        'transports': ['websocket'],
+        'path': '/socket.io',
+        'transports': ['websocket', 'polling'],
         'autoConnect': true,
         'reconnection': true,
+        'timeout': 20000,
       },
     );
 

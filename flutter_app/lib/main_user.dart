@@ -14,7 +14,7 @@ class KarrytUserApp extends StatelessWidget {
     const seed = Color(0xFF14532D);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Karryt Usuario',
+      title: 'Karryt Mueve',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: seed),

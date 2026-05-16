@@ -9,6 +9,7 @@ const outUser = path.join(buildDir, "web_user");
 const outDriver = path.join(buildDir, "web_driver");
 const outAdmin = path.join(buildDir, "web_admin");
 const outHosting = path.join(buildDir, "hosting");
+const assetVersion = String(Date.now());
 
 function run(command, cwd = rootDir) {
   execSync(command, { cwd, stdio: "inherit" });
@@ -38,6 +39,7 @@ function customizeWebOutput(outputDir, options) {
   const indexPath = path.join(outputDir, "index.html");
   const manifestPath = path.join(outputDir, "manifest.json");
   const faviconPath = path.join(outputDir, faviconFile);
+  const bootstrapPath = path.join(outputDir, "flutter_bootstrap.js");
 
   if (fs.existsSync(indexPath)) {
     let indexHtml = fs.readFileSync(indexPath, "utf8");
@@ -63,7 +65,25 @@ function customizeWebOutput(outputDir, options) {
       );
     }
 
+    indexHtml = indexHtml.replace(
+      /<script src="flutter_bootstrap\.js" async><\/script>/,
+      `<script src="flutter_bootstrap.js?v=${assetVersion}" async></script>`
+    );
+
     fs.writeFileSync(indexPath, indexHtml, "utf8");
+  }
+
+  if (fs.existsSync(bootstrapPath)) {
+    let bootstrapJs = fs.readFileSync(bootstrapPath, "utf8");
+    bootstrapJs = bootstrapJs.replace(
+      /"mainJsPath":"main\.dart\.js"/g,
+      `"mainJsPath":"main.dart.js?v=${assetVersion}"`
+    );
+    bootstrapJs = bootstrapJs.replace(
+      /serviceWorkerVersion: "[^"]+"/g,
+      `serviceWorkerVersion: "${assetVersion}"`
+    );
+    fs.writeFileSync(bootstrapPath, bootstrapJs, "utf8");
   }
 
   if (fs.existsSync(manifestPath)) {
@@ -117,13 +137,13 @@ run("flutter build web -t lib/main_admin.dart --base-href /admin/ --output build
 
 console.log("==> Personalizando identidad visual por app");
 customizeWebOutput(outUser, {
-  title: "Karryt Usuario",
-  shortName: "Karryt User",
-  description: "App de usuario Karryt para solicitar viajes de carga",
+  title: "Karryt Mueve",
+  shortName: "Mueve",
+  description: "App de usuario Karryt Mueve para solicitar viajes de carga",
   themeColor: "#14532D",
   backgroundColor: "#F3F6FB",
   faviconFile: "favicon-user.svg",
-  faviconLabel: "U",
+  faviconLabel: "M",
 });
 customizeWebOutput(outDriver, {
   title: "Karryt Chofer",

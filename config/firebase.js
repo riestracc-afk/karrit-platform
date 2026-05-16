@@ -3,6 +3,8 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+const useFirestore = String(process.env.USE_FIRESTORE).toLowerCase() === 'true';
+
 // Inicializar Firebase Admin SDK
 // En production, las credenciales vienen de las variables de entorno de Firebase Hosting
 const serviceAccount = {
@@ -18,7 +20,9 @@ const hasServiceAccount = Boolean(
 let db = null;
 
 try {
-  if (hasServiceAccount) {
+  if (!useFirestore) {
+    console.warn('Firestore disabled by USE_FIRESTORE. Using in-memory storage.');
+  } else if (hasServiceAccount) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });

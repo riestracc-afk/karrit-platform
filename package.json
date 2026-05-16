@@ -10,13 +10,18 @@
     "build:web:user": "cd flutter_app && flutter pub get && flutter build web -t lib/main_user.dart",
     "build:web:driver": "cd flutter_app && flutter pub get && flutter build web -t lib/main_driver.dart",
     "build:web:admin": "cd flutter_app && flutter pub get && flutter build web -t lib/main_admin.dart",
+    "clean:flutter": "cd flutter_app && flutter clean",
+    "pub:get:flutter": "cd flutter_app && flutter pub get",
     "run:user": "cd flutter_app && flutter run -d chrome -t lib/main_user.dart",
     "run:driver": "cd flutter_app && flutter run -d chrome -t lib/main_driver.dart",
     "run:admin": "cd flutter_app && flutter run -d chrome -t lib/main_admin.dart",
+    "user": "cd flutter_app && flutter run -d chrome -t lib/main_user.dart",
+    "chofer": "cd flutter_app && flutter run -d chrome -t lib/main_driver.dart",
+    "admin": "cd flutter_app && flutter run -d chrome -t lib/main_admin.dart",
     "start:karryt": "powershell -ExecutionPolicy Bypass -File ./start-karryt.ps1",
     "start:flutter": "npm run build:web:multi && npm start",
     "start": "node server.js",
-    "deploy": "npm run build:web:multi && firebase deploy"
+    "deploy": "npm run build:web:multi && node scripts/firebase-deploy.js"
   },
   "keywords": [
     "carga",
